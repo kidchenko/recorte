@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>recorte</id>
+    <version>0.0.1</version>
+    <packageSourceUrl>https://github.com/kidchenko/recorte/tree/main/packaging/choco</packageSourceUrl>
+    <owners>kidchenko</owners>
+    <title>Recorte</title>
+    <authors>kidchenko</authors>
+    <copyright>Copyright (c) 2026 kidchenko</copyright>
+    <projectUrl>https://github.com/kidchenko/recorte</projectUrl>
+    <!-- Pinned to a commit once the repo is public: jsDelivr cannot read a
+         private repo, and Chocolatey caches the icon by URL. -->
+    <iconUrl>https://cdn.jsdelivr.net/gh/kidchenko/recorte@main/assets/icon-256.png</iconUrl>
+    <licenseUrl>https://github.com/kidchenko/recorte/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/kidchenko/recorte</projectSourceUrl>
+    <bugTrackerUrl>https://github.com/kidchenko/recorte/issues</bugTrackerUrl>
+    <tags>recorte screenshot snipping-tool snip screen-capture annotate tray utility</tags>
+    <summary>A snipping tool in the tray: Win+Shift+S, select, copy, mark up</summary>
+    <description><![CDATA[
+Press Win+Shift+S, drag across any part of the screen, and it's on the
+clipboard. An editor opens with it to mark it up, then copy or save.
+
+* Same keys as Windows' Snipping Tool, which Recorte takes over while it runs.
+* Every monitor frozen at once, at its own scale.
+* Pen, highlighter, arrow, box and pixelate blur, six colours, three sizes,
+  undo and redo.
+* On the clipboard as a bitmap and a PNG, so any app pastes it.
+
+A single small executable with no runtime dependencies.
+]]></description>
+    <releaseNotes>https://github.com/kidchenko/recorte/releases</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

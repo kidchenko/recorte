@@ -1,0 +1,38 @@
+{
+    "version": "0.0.1",
+    "description": "A snipping tool in the tray, on Win+Shift+S",
+    "homepage": "https://josebarbosa.dev/recorte/",
+    "license": "MIT",
+    "notes": "Recorte lives in the tray. Quit it from its menu before running `scoop update` or `scoop uninstall`.",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/kidchenko/recorte/releases/download/v0.0.1/recorte-0.0.1-x64.exe#/recorte.exe",
+            "hash": "REPLACE_WITH_SHA256"
+        }
+    },
+    "shortcuts": [
+        [
+            "recorte.exe",
+            "Recorte"
+        ]
+    ],
+    "uninstaller": {
+        "script": [
+            "# Start at login points at this install; settings in $env:APPDATA\\Recorte are kept.",
+            "if ($cmd -eq 'uninstall') { Remove-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' -Name 'Recorte' -ErrorAction SilentlyContinue }"
+        ]
+    },
+    "checkver": {
+        "github": "https://github.com/kidchenko/recorte"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/kidchenko/recorte/releases/download/v$version/recorte-$version-x64.exe#/recorte.exe"
+            }
+        },
+        "hash": {
+            "url": "$baseurl/SHA256SUMS.txt"
+        }
+    }
+}

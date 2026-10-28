@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: kidchenko.Recorte
+PackageVersion: 0.0.1
+PackageLocale: en-US
+Publisher: kidchenko
+PublisherUrl: https://github.com/kidchenko
+PublisherSupportUrl: https://github.com/kidchenko/recorte/issues
+PackageName: Recorte
+PackageUrl: https://josebarbosa.dev/recorte/
+License: MIT
+LicenseUrl: https://github.com/kidchenko/recorte/blob/main/LICENSE
+Copyright: Copyright (c) 2026 kidchenko
+ShortDescription: A snipping tool in the tray, on Win+Shift+S
+Description: |-
+  Press Win+Shift+S, drag across any part of the screen, and it's on the
+  clipboard. An editor opens with it: pen, highlighter, arrow, box and
+  pixelate blur, with undo, then copy or save.
+
+  Recorte takes Win+Shift+S over from Windows' Snipping Tool while it runs.
+Moniker: recorte
+Tags:
+  - screenshot
+  - snipping-tool
+  - screen-capture
+  - annotate
+  - tray
+  - utilities
+ReleaseNotesUrl: https://github.com/kidchenko/recorte/releases
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
