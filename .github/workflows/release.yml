@@ -56,17 +56,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      # traykit is private: cargo fetches it with git, which this token lets
-      # through. A fine-grained token with read access to that one repo.
-      - name: traykit access
-        shell: bash
-        run: git config --global url."https://x-access-token:${{ secrets.TRAYKIT_TOKEN }}@github.com/kidchenko/traykit".insteadOf "https://github.com/kidchenko/traykit"
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
       - name: Build installer + portable exe
         shell: pwsh
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
         run: .\build.ps1
       - name: Update Chocolatey and winget manifests
         shell: pwsh

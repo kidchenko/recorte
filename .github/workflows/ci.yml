@@ -21,11 +21,6 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
 
-      # traykit is private: cargo fetches it with git, which this token lets
-      # through. A fine-grained token with read access to that one repo.
-      - name: traykit access
-        shell: bash
-        run: git config --global url."https://x-access-token:${{ secrets.TRAYKIT_TOKEN }}@github.com/kidchenko/traykit".insteadOf "https://github.com/kidchenko/traykit"
       - name: Linux libraries
         if: runner.os == 'Linux'
         run: |
@@ -36,8 +31,6 @@ jobs:
         run: cargo fmt --check
       - name: Clippy
         run: cargo clippy --release --all-targets -- -D warnings
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
       - name: Test
         run: cargo test
       - name: Build
