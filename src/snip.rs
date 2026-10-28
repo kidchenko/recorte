@@ -50,11 +50,11 @@ impl Snip {
     }
 }
 
-/// `Print 2026-10-28 14-03-11.png`: sorts by time, and has no characters a
+/// `Recorte 2026-10-28 14-03-11.png`: sorts by time, and has no characters a
 /// file system or a chat upload would object to.
 pub fn file_name(t: LocalTime) -> String {
     format!(
-        "Print {:04}-{:02}-{:02} {:02}-{:02}-{:02}.png",
+        "Recorte {:04}-{:02}-{:02} {:02}-{:02}-{:02}.png",
         t.year, t.month, t.day, t.hour, t.minute, t.second
     )
 }
@@ -106,7 +106,7 @@ mod tests {
             second: 1,
             millis: 0,
         };
-        assert_eq!(file_name(t), "Print 2026-03-09 07-05-01.png");
+        assert_eq!(file_name(t), "Recorte 2026-03-09 07-05-01.png");
     }
 
     #[test]

@@ -1,22 +1,22 @@
-; Inno Setup script for Print.
-;   iscc /DAppVersion=x.y.z packaging\inno\print.iss
-; Expects target\release\print.exe to already be built (build.ps1 does both).
+; Inno Setup script for Recorte.
+;   iscc /DAppVersion=x.y.z packaging\inno\recorte.iss
+; Expects target\release\recorte.exe to already be built (build.ps1 does both).
 
-#define AppName      "Print"
+#define AppName      "Recorte"
 #ifndef AppVersion
   #define AppVersion "0.0.1"
 #endif
 #define AppPublisher "kidchenko"
-#define AppURL       "https://github.com/kidchenko/print"
-#define AppExe       "print.exe"
+#define AppURL       "https://github.com/kidchenko/recorte"
+#define AppExe       "recorte.exe"
 ; Data folder and Run value name. Must match the `name` given to traykit::init
 ; in src/main.rs: traykit's dirs and autostart derive both from it.
-#define AppKey       "Print"
+#define AppKey       "Recorte"
 
 [Setup]
 ; Never reuse this GUID for another product: it is how Windows matches
 ; upgrades and uninstalls, and winget's ProductCode is derived from it.
-AppId={{FD211DC9-7E58-4009-B506-FB298F39E513}
+AppId={{7D86CBD6-8FBE-415F-A58E-B154D15E24CB}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
@@ -30,7 +30,7 @@ DisableProgramGroupPage=yes
 DisableDirPage=auto
 LicenseFile=..\..\LICENSE
 OutputDir=..\..\dist
-OutputBaseFilename=Print-Setup-{#AppVersion}
+OutputBaseFilename=Recorte-Setup-{#AppVersion}
 SetupIconFile=..\..\assets\icon.ico
 UninstallDisplayIcon={app}\{#AppExe}
 Compression=lzma2/max
@@ -52,8 +52,8 @@ MinVersion=10.0
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-; Ticked by default: Win+Shift+S only reaches Print while it is running, so a
-; Print that did not start at sign-in leaves the key opening Snipping Tool.
+; Ticked by default: Win+Shift+S only reaches Recorte while it is running, so a
+; Recorte that did not start at sign-in leaves the key opening Snipping Tool.
 ; Same HKCU value the app's own "Start at login" toggle uses.
 Name: "autostart"; Description: "Start {#AppName} when I sign in";   GroupDescription: "Startup:"
 
@@ -73,11 +73,11 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run";   ValueType
 Filename: "{app}\{#AppExe}"; Description: "Launch {#AppName}";   Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [UninstallRun]
-Filename: "{sys}\taskkill.exe"; Parameters: "/f /im {#AppExe}";   Flags: runhidden; RunOnceId: "KillPrint"
+Filename: "{sys}\taskkill.exe"; Parameters: "/f /im {#AppExe}";   Flags: runhidden; RunOnceId: "KillRecorte"
 
 [UninstallDelete]
-Type: files; Name: "{userappdata}\{#AppKey}\print.log"
-Type: files; Name: "{userappdata}\{#AppKey}\print.log.1"
+Type: files; Name: "{userappdata}\{#AppKey}\recorte.log"
+Type: files; Name: "{userappdata}\{#AppKey}\recorte.log.1"
 
 [Code]
 // The app's own "Run at login" toggle writes the same HKCU value; clear it

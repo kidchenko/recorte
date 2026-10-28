@@ -105,7 +105,7 @@ impl Editor {
         let h = (img_h + toolbar::HEIGHT as f64).max(240.0).min(mh * 0.85);
 
         let mut builder = WindowBuilder::new()
-            .with_title("Print")
+            .with_title("Recorte")
             .with_visible(false)
             .with_inner_size(LogicalSize::new(w, h))
             .with_min_inner_size(LogicalSize::new(toolbar::min_width() as f64, 200.0))

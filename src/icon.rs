@@ -2,7 +2,7 @@
 //! the overlay draws it. Drawn in code at every size, so the tray icon is
 //! sharp at any DPI and the app icon comes from the same lines.
 //!
-//! `print --dump-icons assets` writes the app icon as PNGs and the
+//! `recorte --dump-icons assets` writes the app icon as PNGs and the
 //! `icon.ico` the build embeds in the exe.
 
 use std::path::Path;

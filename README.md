@@ -1,13 +1,15 @@
 <div align="center">
 
-<img src="assets/icon-256.png" width="112" height="112" alt="Print">
+<img src="assets/icon-256.png" width="112" height="112" alt="Recorte">
 
-# Print
+# Recorte
 
 A snipping tool in the tray.<br>
 For Windows today; macOS and Linux next.
 
-**[josebarbosa.dev/print](https://josebarbosa.dev/print/)**
+<sub><i>recorte</i>: Portuguese for <i>clipping</i>, a piece cut out</sub>
+
+**[josebarbosa.dev/recorte](https://josebarbosa.dev/recorte/)**
 
 </div>
 
@@ -22,15 +24,15 @@ it uses a few MB of memory and no CPU.
 ## Taking a snip
 
 - **Win+Shift+S**, a left click on the tray icon, **New snip** in its menu,
-  or launching Print again while it's running all freeze the screen and dim
+  or launching Recorte again while it's running all freeze the screen and dim
   it. **Snip in 5 seconds** waits first, for a menu or a hover state.
 - Drag across what you want. When you let go it's on the clipboard, as an
   image any app can paste.
 - **Enter** without dragging takes the whole monitor. **Esc** or a right
   click cancels.
 
-Print takes Win+Shift+S over from Windows: while Print is running, the key
-opens Print and not Snipping Tool. Quit Print and Windows has it back.
+Recorte takes Win+Shift+S over from Windows: while Recorte is running, the key
+opens Recorte and not Snipping Tool. Quit Recorte and Windows has it back.
 
 ## The editor
 
@@ -47,11 +49,11 @@ tool remembers its own colour, so the highlighter stays yellow.
 
 **Ctrl+Z** undo, **Ctrl+Y** redo, **Ctrl+C** copy, **Ctrl+S** save,
 **Ctrl+N** a new snip, **Esc** close. Copy and save show a tick when they're
-done. Saving suggests `Pictures\Screenshots\Print 2026-10-28 14-03-11.png`.
+done. Saving suggests `Pictures\Screenshots\Recorte 2026-10-28 14-03-11.png`.
 
 ## Settings
 
-**Edit settings** in the menu opens `%APPDATA%\Print\config.json`. Changes
+**Edit settings** in the menu opens `%APPDATA%\Recorte\config.json`. Changes
 apply within two seconds, the hotkey included.
 
 | setting | default | |
@@ -63,20 +65,20 @@ apply within two seconds, the hotkey included.
 | `saveFolder` | `""` | where to save; empty is `Pictures\Screenshots` |
 
 The menu also has **Start at login**, **Open screenshots folder** and
-**Open log** (`%APPDATA%\Print\print.log`; `PRINT_LOG=debug` for more).
+**Open log** (`%APPDATA%\Recorte\recorte.log`; `RECORTE_LOG=debug` for more).
 
 ## Building
 
 ```powershell
 .\build.ps1                    # tests, release exe and installer, into dist\
 .\build.ps1 -Icons -Run        # ... also redraw the icons and docs\img, then launch
-cargo build --release          # just target\release\print.exe
-print --dump-icons assets      # redraw assets\icon.ico and the PNGs
-print --render-docs            # redraw docs\img: the site's icons and editor pictures
+cargo build --release          # just target\release\recorte.exe
+recorte --dump-icons assets    # redraw assets\icon.ico and the PNGs
+recorte --render-docs          # redraw docs\img: the site's icons and editor pictures
 ```
 
-`dist\` gets the portable `print-<version>-x64.exe`, `Print-Setup-<version>.exe`
-and a `Print-Setup.exe` copy, the name the download link uses. The installer
+`dist\` gets the portable `recorte-<version>-x64.exe`, `Recorte-Setup-<version>.exe`
+and a `Recorte-Setup.exe` copy, the name the download link uses. The installer
 needs [Inno Setup](https://jrsoftware.org/isinfo.php) (`winget install
 JRSoftware.InnoSetup`); without it the script still builds the exe.
 

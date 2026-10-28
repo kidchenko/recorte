@@ -53,7 +53,7 @@ impl Overlay {
         let dim = bright.px.iter().map(|&p| dimmed(p)).collect();
 
         let builder = WindowBuilder::new()
-            .with_title("Print")
+            .with_title("Recorte")
             .with_decorations(false)
             .with_resizable(false)
             .with_always_on_top(true)

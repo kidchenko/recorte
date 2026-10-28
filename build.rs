@@ -19,8 +19,8 @@ fn embed_windows_resources() {
     if std::path::Path::new("assets/app.manifest").exists() {
         res.set_manifest_file("assets/app.manifest");
     }
-    res.set("FileDescription", "Print");
-    res.set("ProductName", "Print");
+    res.set("FileDescription", "Recorte");
+    res.set("ProductName", "Recorte");
     res.set("LegalCopyright", "MIT licensed");
     if let Err(e) = res.compile() {
         eprintln!("cargo:warning=resource compile failed: {e}");

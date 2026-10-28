@@ -105,13 +105,13 @@ impl App {
             &MenuItem::with_id(ID_CONFIG, "Edit settings", true, None),
             &MenuItem::with_id(ID_LOG, "Open log", true, None),
             &PredefinedMenuItem::separator(),
-            &MenuItem::with_id(ID_QUIT, "Quit Print", true, None),
+            &MenuItem::with_id(ID_QUIT, "Quit Recorte", true, None),
         ])
         .map_err(|e| format!("could not build the menu: {e}"))?;
 
         let dark_taskbar = traykit::theme::tray_is_dark();
         let tray = TrayIconBuilder::new()
-            .with_tooltip(format!("Print ({})", hk.label()))
+            .with_tooltip(format!("Recorte ({})", hk.label()))
             .with_icon(tray_image(dark_taskbar)?)
             .with_menu(Box::new(menu))
             // Left click snips; the menu is the right button's.
@@ -333,7 +333,7 @@ impl App {
                     self.snip_item.set_text(snip_label(&hk));
                     let _ = self
                         .tray
-                        .set_tooltip(Some(format!("Print ({})", hk.label())));
+                        .set_tooltip(Some(format!("Recorte ({})", hk.label())));
                     linfo!("hotkey is now {}", hk.label());
                 }
                 self.cfg = cfg;

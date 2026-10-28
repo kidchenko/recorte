@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Print: a snipping tool in the tray</title>
+<title>Recorte: a snipping tool in the tray</title>
 <meta name="description" content="Press Win+Shift+S, drag across any part of the screen, and it's on the clipboard. Mark it up with a pen, highlighter, arrows, boxes and blur, then copy or save. Free and open source.">
 <link rel="icon" href="img/favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" href="img/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="icon" href="img/favicon-16.png" type="image/png" sizes="16x16">
 <link rel="apple-touch-icon" href="img/icon-256.png">
 
-<meta property="og:title" content="Print: a snipping tool in the tray">
+<meta property="og:title" content="Recorte: a snipping tool in the tray">
 <meta property="og:description" content="Win+Shift+S, drag, and it's on the clipboard. Arrows, boxes, highlighter and blur, then copy or save.">
-<meta property="og:image" content="https://josebarbosa.dev/print/img/icon-256.png">
-<meta property="og:url" content="https://josebarbosa.dev/print/">
+<meta property="og:image" content="https://josebarbosa.dev/recorte/img/icon-256.png">
+<meta property="og:url" content="https://josebarbosa.dev/recorte/">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 
@@ -95,6 +95,7 @@
     line-height: 1.04;
     margin: 26px 0 0;
   }
+  .meaning { color: var(--faint); font-size: .92rem; margin: 6px 0 0; }
   .tagline { font-size: clamp(1.12rem, 3.6vw, 1.45rem); color: var(--dim); margin: 14px auto 0; max-width: 30ch; }
   .keys { margin: 22px 0 0; font-size: 1.05rem; color: var(--dim); }
   .keys kbd { font-size: .95rem; padding: .2em .55em; color: var(--text); }
@@ -210,17 +211,18 @@
 
 <header class="wrap">
   <img class="mark" src="img/icon-256.png" alt="" width="128" height="128">
-  <h1>Print</h1>
+  <h1>Recorte</h1>
+  <p class="meaning"><i>recorte</i>: Portuguese for <i>clipping</i>, a piece cut out</p>
   <p class="tagline">Snip any part of the screen, mark it up, copy it.</p>
   <p class="keys"><kbd>Win</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>, like you're used to.</p>
 
   <div class="cta">
-    <a class="download" href="https://github.com/kidchenko/print/releases/latest">Download for Windows</a>
+    <a class="download" href="https://github.com/kidchenko/recorte/releases/latest">Download for Windows</a>
   </div>
   <p class="alt">Windows 10 and 11. macOS and Linux are next.</p>
 </header>
 
-<div class="wrap demo" aria-label="A working copy of Print's editor">
+<div class="wrap demo" aria-label="A working copy of Recorte's editor">
   <div class="editor">
     <div class="bar" id="bar" role="toolbar" aria-label="Markup tools"></div>
     <div class="stage">
@@ -234,7 +236,7 @@
 <main class="wrap">
   <section>
     <h2>The screenshot you meant to take</h2>
-    <p class="lede">Windows' Snipping Tool takes its time to open and has little to mark up with. Print is up before you've let go of the keys.</p>
+    <p class="lede">Windows' Snipping Tool takes its time to open and has little to mark up with. Recorte is up before you've let go of the keys.</p>
     <div class="grid">
       <div class="card"><h3>Same keys</h3><p>Win+Shift+S freezes every monitor. Drag across what you want, and it's on the clipboard when you let go.</p></div>
       <div class="card"><h3>Mark it up</h3><p>Pen, highlighter, arrow, box and blur, in six colours and three sizes, with undo. Each tool keeps its own colour.</p></div>
@@ -247,9 +249,9 @@
 
   <section>
     <h2>The editor</h2>
-    <p class="lede">Drawn by Print itself, in your taskbar's light or dark theme and your accent colour.</p>
+    <p class="lede">Drawn by Recorte itself, in your taskbar's light or dark theme and your accent colour.</p>
     <div class="shots">
-      <img id="shot" src="img/editor-dark.png" alt="Print's editor with an arrow, a box, a highlight and a blur on a snip" width="640" height="482">
+      <img id="shot" src="img/editor-dark.png" alt="Recorte's editor with an arrow, a box, a highlight and a blur on a snip" width="640" height="482">
     </div>
   </section>
 
@@ -270,9 +272,9 @@
   <section>
     <h2>How it works</h2>
     <div class="how">
-      <p>Windows keeps <b>Win+Shift+S</b> for itself, so an app can't register it the usual way. Print watches the keyboard with a low-level hook instead, sees the keys before the shell does, and takes them. Quit Print and Windows has its shortcut back.</p>
+      <p>Windows keeps <b>Win+Shift+S</b> for itself, so an app can't register it the usual way. Recorte watches the keyboard with a low-level hook instead, sees the keys before the shell does, and takes them. Quit Recorte and Windows has its shortcut back.</p>
       <p>The screen is captured <b>once</b>, before anything appears, so you select on a still picture: a menu or a tooltip stays in the shot. Each monitor gets its own overlay at its own scale, so a snip from a 4K screen keeps every pixel.</p>
-      <p>The overlay and the editor are drawn by Print itself, with no browser engine and no GPU, the same code on every system. Nothing you snip leaves your computer.</p>
+      <p>The overlay and the editor are drawn by Recorte itself, with no browser engine and no GPU, the same code on every system. Nothing you snip leaves your computer.</p>
     </div>
   </section>
 
@@ -292,8 +294,8 @@
 
 <footer class="wrap">
   Made by <a href="https://github.com/kidchenko">kidchenko</a>. MIT licensed.
-  <a href="https://github.com/kidchenko/print">Source</a> and
-  <a href="https://github.com/kidchenko/print/releases">releases</a> on GitHub.
+  <a href="https://github.com/kidchenko/recorte">Source</a> and
+  <a href="https://github.com/kidchenko/recorte/releases">releases</a> on GitHub.
   <a href="https://josebarbosa.dev/portfolio/">All apps</a>.
 </footer>
 
@@ -512,7 +514,7 @@
     const blob = await exported();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'Print sample.png';
+    a.download = 'Recorte sample.png';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     flash(saveButton, ICON.save, 'Saved to your downloads.');

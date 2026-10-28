@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Builds print.exe and, if Inno Setup is installed, the installer.
+  Builds recorte.exe and, if Inno Setup is installed, the installer.
 
 .EXAMPLE
   .\build.ps1                  # test + release binary + installer
@@ -48,7 +48,7 @@ if (-not $cargo) {
 }
 
 # A running instance locks the exe and the link fails with "Access is denied".
-$running = Get-Process print -ErrorAction SilentlyContinue
+$running = Get-Process recorte -ErrorAction SilentlyContinue
 if ($running) {
   Warn "stopping $($running.Count) running instance(s) first"
   $running | Stop-Process -Force
@@ -65,8 +65,8 @@ if (-not $SkipTests) {
 Step 'Building release binary'
 & $cargo build --release
 if ($LASTEXITCODE -ne 0) { throw "cargo build failed ($LASTEXITCODE)" }
-$exe = Join-Path $PSScriptRoot 'target\release\print.exe'
-Ok ("print.exe   {0:N2} MB" -f ((Get-Item $exe).Length / 1MB))
+$exe = Join-Path $PSScriptRoot 'target\release\recorte.exe'
+Ok ("recorte.exe   {0:N2} MB" -f ((Get-Item $exe).Length / 1MB))
 $version = Get-PackageVersion
 
 if ($Icons) {
@@ -82,8 +82,8 @@ if ($Icons) {
 }
 
 New-Item -ItemType Directory -Force (Join-Path $PSScriptRoot 'dist') | Out-Null
-Copy-Item $exe (Join-Path $PSScriptRoot "dist\print-$version-x64.exe") -Force
-Ok "dist\print-$version-x64.exe (portable)"
+Copy-Item $exe (Join-Path $PSScriptRoot "dist\recorte-$version-x64.exe") -Force
+Ok "dist\recorte-$version-x64.exe (portable)"
 
 if (-not $SkipInstaller) {
   $iscc = Find 'iscc' @(
@@ -96,13 +96,13 @@ if (-not $SkipInstaller) {
     Warn '  winget install JRSoftware.InnoSetup'
   } else {
     Step 'Building installer'
-    & $iscc /Q "/DAppVersion=$version" (Join-Path $PSScriptRoot 'packaging\inno\print.iss')
+    & $iscc /Q "/DAppVersion=$version" (Join-Path $PSScriptRoot 'packaging\inno\recorte.iss')
     if ($LASTEXITCODE -ne 0) { throw "iscc failed ($LASTEXITCODE)" }
-    $setup = Join-Path $PSScriptRoot "dist\Print-Setup-$version.exe"
-    Ok ("Print-Setup-$version.exe   {0:N2} MB" -f ((Get-Item $setup).Length / 1MB))
+    $setup = Join-Path $PSScriptRoot "dist\Recorte-Setup-$version.exe"
+    Ok ("Recorte-Setup-$version.exe   {0:N2} MB" -f ((Get-Item $setup).Length / 1MB))
     Ok ("sha256  " + (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower())
-    # Same name every release, so /releases/latest/download/Print-Setup.exe works.
-    Copy-Item $setup (Join-Path $PSScriptRoot 'dist\Print-Setup.exe') -Force
+    # Same name every release, so /releases/latest/download/Recorte-Setup.exe works.
+    Copy-Item $setup (Join-Path $PSScriptRoot 'dist\Recorte-Setup.exe') -Force
   }
 }
 

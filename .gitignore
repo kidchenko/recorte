@@ -8,7 +8,7 @@
 # that were tested, not to whatever is newest on the day someone clones it.
 
 # ------------------------------------------------------------ build artefacts
-# Inno Setup writes the installer here (see packaging/inno/print.iss).
+# Inno Setup writes the installer here (see packaging/inno/recorte.iss).
 /dist
 # `choco pack` output.
 /packaging/choco/*.nupkg
@@ -34,12 +34,12 @@ Desktop.ini
 $RECYCLE.BIN/
 
 # ---------------------------------------------------------------------- macOS
-# build.sh assembles dist/Print.app (already covered by /dist) and can wrap it in
+# build.sh assembles dist/Recorte.app (already covered by /dist) and can wrap it in
 # a .dmg there too. Finder litter is the only thing left to keep out.
 .DS_Store
 
 # --------------------------------------------------------------------- runtime
 # Nothing the app writes at runtime lives in the repo -- config.json and
-# print.log go to %APPDATA%\Print on Windows, to
-# ~/Library/Application Support/Print on macOS and to ~/.config/print on Linux.
+# recorte.log go to %APPDATA%\Recorte on Windows, to
+# ~/Library/Application Support/Recorte on macOS and to ~/.config/recorte on Linux.
 # Noted here only so the next person does not go looking for them.

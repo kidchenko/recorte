@@ -1,7 +1,7 @@
 // No console window: this is a tray app. No-op off Windows.
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
-//! Print is a snipping tool in the tray: a hotkey freezes the screen, you
+//! Recorte is a snipping tool in the tray: a hotkey freezes the screen, you
 //! drag out a part of it, and it is on the clipboard. An editor opens with
 //! it for a pen, a highlighter, arrows, boxes and blur, then copy or save.
 //!
@@ -38,19 +38,19 @@ use tao::event_loop::EventLoopBuilder;
 use traykit::{lerror, linfo};
 
 pub const APP: traykit::App = traykit::App {
-    name: "Print",
-    id: "print",
-    bundle_id: "com.kidchenko.print",
+    name: "Recorte",
+    id: "recorte",
+    bundle_id: "com.kidchenko.recorte",
     summary: "Snip a part of the screen, mark it up, copy it",
 };
 
 const USAGE: &str = "\
-Print: snip a part of the screen, mark it up, copy it.
+Recorte: snip a part of the screen, mark it up, copy it.
 
 usage:
-  print                    run in the tray, or start a snip in the running copy
-  print --dump-icons [dir] write the app icon as PNGs and icon.ico
-  print --render-docs [dir] draw the landing page's images (default docs/img)";
+  recorte                     run in the tray, or start a snip in the running copy
+  recorte --dump-icons [dir]  write the app icon as PNGs and icon.ico
+  recorte --render-docs [dir] draw the landing page's images (default docs/img)";
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -60,7 +60,7 @@ fn main() {
             traykit::util::attach_console();
             let dir = args.get(1).map(String::as_str).unwrap_or("assets");
             if let Err(e) = icon::dump(std::path::Path::new(dir)) {
-                eprintln!("print: {e}");
+                eprintln!("recorte: {e}");
                 std::process::exit(1);
             }
         }
@@ -69,7 +69,7 @@ fn main() {
             let dir =
                 std::path::PathBuf::from(args.get(1).map(String::as_str).unwrap_or("docs/img"));
             if let Err(e) = render_docs(&dir) {
-                eprintln!("print: {e}");
+                eprintln!("recorte: {e}");
                 std::process::exit(1);
             }
         }
@@ -79,7 +79,7 @@ fn main() {
         }
         Some(other) => {
             traykit::util::attach_console();
-            eprintln!("print: unknown argument `{other}`\n\n{USAGE}");
+            eprintln!("recorte: unknown argument `{other}`\n\n{USAGE}");
             std::process::exit(2);
         }
     }
@@ -88,7 +88,7 @@ fn main() {
 fn tray() {
     traykit::init(APP);
     linfo!(
-        "--- Print {} starting (pid {}) ---",
+        "--- Recorte {} starting (pid {}) ---",
         env!("CARGO_PKG_VERSION"),
         std::process::id()
     );

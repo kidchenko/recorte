@@ -1,15 +1,15 @@
 [package]
-name         = "print"
+name         = "recorte"
 version      = "0.0.1"
 edition      = "2021"
 rust-version = "1.90"
 description  = "Snip a part of the screen, mark it up, copy it"
 authors      = ["kidchenko <kidchenko@gmail.com>"]
 license      = "MIT"
-repository   = "https://github.com/kidchenko/print"
+repository   = "https://github.com/kidchenko/recorte"
 
 [[bin]]
-name = "print"
+name = "recorte"
 path = "src/main.rs"
 
 [dependencies]

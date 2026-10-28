@@ -56,7 +56,7 @@ pub fn start(hotkey: Hotkey, fire: Fire) {
         return;
     }
     let _ = std::thread::Builder::new()
-        .name("print-hotkey".into())
+        .name("recorte-hotkey".into())
         .spawn(|| unsafe {
             THREAD.store(GetCurrentThreadId(), Ordering::Relaxed);
             let Some(mut hook) = install() else { return };
