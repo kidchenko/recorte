@@ -67,11 +67,18 @@ The menu also has **Start at login**, **Open screenshots folder** and
 
 ## Building
 
-```sh
-cargo build --release          # target/release/print.exe
-print --dump-icons assets      # redraw assets/icon.ico and the PNGs
-print --render-docs            # redraw docs/img: the site's icons and editor pictures
+```powershell
+.\build.ps1                    # tests, release exe and installer, into dist\
+.\build.ps1 -Icons -Run        # ... also redraw the icons and docs\img, then launch
+cargo build --release          # just target\release\print.exe
+print --dump-icons assets      # redraw assets\icon.ico and the PNGs
+print --render-docs            # redraw docs\img: the site's icons and editor pictures
 ```
+
+`dist\` gets the portable `print-<version>-x64.exe`, `Print-Setup-<version>.exe`
+and a `Print-Setup.exe` copy, the name the download link uses. The installer
+needs [Inno Setup](https://jrsoftware.org/isinfo.php) (`winget install
+JRSoftware.InnoSetup`); without it the script still builds the exe.
 
 The shared tray-app pieces (log, single instance, autostart, config, theme)
 come from [traykit](https://github.com/kidchenko/traykit). To build against a
