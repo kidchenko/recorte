@@ -1,0 +1,52 @@
+[package]
+name         = "print"
+version      = "0.0.1"
+edition      = "2021"
+rust-version = "1.90"
+description  = "Snip a part of the screen, mark it up, copy it"
+authors      = ["kidchenko <kidchenko@gmail.com>"]
+license      = "MIT"
+repository   = "https://github.com/kidchenko/print"
+
+[[bin]]
+name = "print"
+path = "src/main.rs"
+
+[dependencies]
+png        = "0.18"
+serde      = { version = "1", features = ["derive"] }
+softbuffer = { version = "0.4", default-features = false }
+tao        = "0.37"
+tiny-skia  = { version = "0.11", default-features = false, features = ["std", "simd"] }
+traykit    = { git = "https://github.com/kidchenko/traykit" }
+tray-icon  = "0.26"
+
+[target.'cfg(windows)'.dependencies]
+rfd = "0.15"
+
+[target.'cfg(windows)'.dependencies.windows]
+version  = "0.62"
+features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Com",
+    "Win32_System_DataExchange",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Ole",
+    "Win32_System_Threading",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+]
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
+[profile.release]
+opt-level     = "z"
+lto           = true
+codegen-units = 1
+panic         = "abort"
+strip         = true

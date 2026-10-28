@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------- Rust build
+/target
+**/*.rs.bk
+*.pdb
+
+# Cargo.lock is deliberately NOT here. This is a binary crate, so the lock file
+# is committed: a release build should resolve to the same dependency versions
+# that were tested, not to whatever is newest on the day someone clones it.
+
+# ------------------------------------------------------------ build artefacts
+# Inno Setup writes the installer here (see packaging/inno/print.iss).
+/dist
+# `choco pack` output.
+/packaging/choco/*.nupkg
+
+# ------------------------------------------------------------------- tooling
+__pycache__/
+*.py[cod]
+
+.vs/
+.vscode/
+.idea/
+*.swp
+*~
+
+# Machine-specific tool permissions. A shared .claude/settings.json, if one is
+# ever added, stays tracked.
+.claude/settings.local.json
+
+# -------------------------------------------------------------------- Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------------------------------------------------------------------- macOS
+# build.sh assembles dist/Print.app (already covered by /dist) and can wrap it in
+# a .dmg there too. Finder litter is the only thing left to keep out.
+.DS_Store
+
+# --------------------------------------------------------------------- runtime
+# Nothing the app writes at runtime lives in the repo -- config.json and
+# print.log go to %APPDATA%\Print on Windows, to
+# ~/Library/Application Support/Print on macOS and to ~/.config/print on Linux.
+# Noted here only so the next person does not go looking for them.
