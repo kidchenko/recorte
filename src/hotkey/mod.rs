@@ -26,6 +26,13 @@ pub fn set(hotkey: Hotkey) {
     imp::set(hotkey);
 }
 
+/// Keep the system's own claim on the hotkey away from our windows: while
+/// one of them has the focus, the keys reach it and [`Hotkey::pressed_in`]
+/// sees them. Call once, after the event loop exists.
+pub fn own_windows_first() {
+    imp::own_windows_first();
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Hotkey {
     pub ctrl: bool,
@@ -80,6 +87,22 @@ impl Hotkey {
         Ok(hk)
     }
 
+    /// Is this key press, in one of our own windows, the hotkey? `mods` is
+    /// what the window last reported in `ModifiersChanged`.
+    pub fn pressed_in(
+        &self,
+        event: &tao::event::KeyEvent,
+        mods: tao::keyboard::ModifiersState,
+    ) -> bool {
+        event.state == tao::event::ElementState::Pressed
+            && !event.repeat
+            && key_of(event.physical_key) == Some(self.key)
+            && mods.super_key() == self.meta
+            && mods.control_key() == self.ctrl
+            && mods.alt_key() == self.alt
+            && mods.shift_key() == self.shift
+    }
+
     /// The combination as the menu shows it, in the platform's words.
     pub fn label(&self) -> String {
         let mut parts: Vec<String> = Vec::new();
@@ -111,6 +134,89 @@ impl Hotkey {
     }
 }
 
+/// The key on the keyboard, by position, as a hotkey names it.
+fn key_of(code: tao::keyboard::KeyCode) -> Option<Key> {
+    use tao::keyboard::KeyCode as K;
+    const LETTERS: [K; 26] = [
+        K::KeyA,
+        K::KeyB,
+        K::KeyC,
+        K::KeyD,
+        K::KeyE,
+        K::KeyF,
+        K::KeyG,
+        K::KeyH,
+        K::KeyI,
+        K::KeyJ,
+        K::KeyK,
+        K::KeyL,
+        K::KeyM,
+        K::KeyN,
+        K::KeyO,
+        K::KeyP,
+        K::KeyQ,
+        K::KeyR,
+        K::KeyS,
+        K::KeyT,
+        K::KeyU,
+        K::KeyV,
+        K::KeyW,
+        K::KeyX,
+        K::KeyY,
+        K::KeyZ,
+    ];
+    const DIGITS: [K; 10] = [
+        K::Digit0,
+        K::Digit1,
+        K::Digit2,
+        K::Digit3,
+        K::Digit4,
+        K::Digit5,
+        K::Digit6,
+        K::Digit7,
+        K::Digit8,
+        K::Digit9,
+    ];
+    const FS: [K; 24] = [
+        K::F1,
+        K::F2,
+        K::F3,
+        K::F4,
+        K::F5,
+        K::F6,
+        K::F7,
+        K::F8,
+        K::F9,
+        K::F10,
+        K::F11,
+        K::F12,
+        K::F13,
+        K::F14,
+        K::F15,
+        K::F16,
+        K::F17,
+        K::F18,
+        K::F19,
+        K::F20,
+        K::F21,
+        K::F22,
+        K::F23,
+        K::F24,
+    ];
+    if code == K::PrintScreen {
+        return Some(Key::PrintScreen);
+    }
+    if let Some(i) = LETTERS.iter().position(|k| *k == code) {
+        return Some(Key::Char(b'A' + i as u8));
+    }
+    if let Some(i) = DIGITS.iter().position(|k| *k == code) {
+        return Some(Key::Char(b'0' + i as u8));
+    }
+    FS.iter()
+        .position(|k| *k == code)
+        .map(|i| Key::F(i as u8 + 1))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -138,6 +244,16 @@ mod tests {
         assert!(Hotkey::parse("Ctrl+Banana").is_err());
         assert!(Hotkey::parse("F25").is_err());
         assert!(Hotkey::parse("Ctrl++S").is_err());
+    }
+
+    #[test]
+    fn keys_map_by_position() {
+        use tao::keyboard::KeyCode as K;
+        assert_eq!(key_of(K::KeyS), Some(Key::Char(b'S')));
+        assert_eq!(key_of(K::Digit4), Some(Key::Char(b'4')));
+        assert_eq!(key_of(K::F12), Some(Key::F(12)));
+        assert_eq!(key_of(K::PrintScreen), Some(Key::PrintScreen));
+        assert_eq!(key_of(K::Escape), None);
     }
 
     #[test]

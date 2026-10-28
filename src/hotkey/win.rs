@@ -14,7 +14,7 @@
 //! same trick PowerToys uses.
 
 use super::{Hotkey, Key};
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Mutex, OnceLock};
 use traykit::{linfo, lwarn};
 use windows::Win32::Foundation::{LPARAM, LRESULT, WPARAM};
@@ -39,6 +39,10 @@ static HOTKEY: Mutex<Option<Hotkey>> = Mutex::new(None);
 static HELD: AtomicU32 = AtomicU32::new(0);
 /// The hook thread, which the hook posts to.
 static THREAD: AtomicU32 = AtomicU32::new(0);
+/// `RECORTE_TEST_KEYS=1`: treat typed-by-software keys as real, so the hotkey
+/// can be driven by SendInput in a test. Off, a tool that types for the user
+/// cannot start a snip.
+static TAKE_INJECTED: AtomicBool = AtomicBool::new(false);
 
 /// Unassigned (Windows lists 0xE8 as such); see the module comment.
 const DUMMY: VIRTUAL_KEY = VIRTUAL_KEY(0xE8);
@@ -51,6 +55,10 @@ const WM_FIRE: u32 = WM_APP + 1;
 const REHOOK_EVERY_MS: u32 = 30_000;
 
 pub fn start(hotkey: Hotkey, fire: Fire) {
+    TAKE_INJECTED.store(
+        std::env::var("RECORTE_TEST_KEYS").is_ok_and(|v| v == "1"),
+        Ordering::Relaxed,
+    );
     set(hotkey);
     if FIRE.set(fire).is_err() {
         return;
@@ -164,7 +172,9 @@ unsafe extern "system" fn hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRE
         let info = &*(lparam.0 as *const KBDLLHOOKSTRUCT);
         // Our own DUMMY, and anything another tool typed for the user, is
         // not someone pressing the hotkey.
-        if !info.flags.contains(LLKHF_INJECTED) {
+        let ours = info.vkCode == DUMMY.0 as u32;
+        let typed = !info.flags.contains(LLKHF_INJECTED) || TAKE_INJECTED.load(Ordering::Relaxed);
+        if typed && !ours {
             let msg = wparam.0 as u32;
             let code_vk = info.vkCode;
             if msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN {
@@ -196,4 +206,30 @@ unsafe extern "system" fn hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRE
         }
     }
     CallNextHookEx(None, code, wparam, lparam)
+}
+
+/// Register for raw keyboard input with `RIDEV_NOHOTKEYS`: while one of our
+/// windows has the focus, Windows does not act on hotkeys other programs
+/// registered, Win+Shift+S among them, and the keys reach the window.
+///
+/// The hook alone is not enough there. With our own editor in front,
+/// Windows has been seen to pass Win+Shift+S to Snipping Tool without
+/// calling the hook at all; this makes the editor see the keys instead.
+/// tao registers the keyboard once, when the event loop starts, for device
+/// events this app does not use, so this replaces that registration.
+pub fn own_windows_first() {
+    use windows::Win32::UI::Input::{RegisterRawInputDevices, RAWINPUTDEVICE, RIDEV_NOHOTKEYS};
+    let keyboard = RAWINPUTDEVICE {
+        usUsagePage: 0x01, // generic desktop
+        usUsage: 0x06,     // keyboard
+        dwFlags: RIDEV_NOHOTKEYS,
+        // No target window: the input follows the keyboard focus.
+        hwndTarget: Default::default(),
+    };
+    let ok = unsafe {
+        RegisterRawInputDevices(&[keyboard], std::mem::size_of::<RAWINPUTDEVICE>() as u32)
+    };
+    if let Err(e) = ok {
+        lwarn!("could not keep hotkeys away from our windows ({e})");
+    }
 }

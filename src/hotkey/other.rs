@@ -12,3 +12,5 @@ pub fn start(hotkey: Hotkey, _fire: Box<dyn Fn() + Send + Sync>) {
 }
 
 pub fn set(_hotkey: Hotkey) {}
+
+pub fn own_windows_first() {}

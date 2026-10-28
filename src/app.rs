@@ -17,8 +17,9 @@ use crate::overlay::{self, Outcome, Overlay};
 use crate::snip::{self, Snip};
 
 use std::time::{Duration, Instant, SystemTime};
-use tao::event::Event;
+use tao::event::{Event, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoopProxy, EventLoopWindowTarget};
+use tao::keyboard::ModifiersState;
 use tray_icon::menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem};
 use tray_icon::{
     Icon as TrayImage, MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent,
@@ -58,6 +59,10 @@ pub struct App {
     snip_at: Option<Instant>,
     next_idle: Instant,
     dark_taskbar: bool,
+    /// The hotkey, to recognise it in our own windows (see `on_window`).
+    hotkey: Hotkey,
+    /// Modifiers held, as our windows last reported them.
+    mods: ModifiersState,
 }
 
 impl App {
@@ -85,6 +90,7 @@ impl App {
         hotkey::start(hk, move || {
             let _ = p.send_event(UserEvent::Snip);
         });
+        hotkey::own_windows_first();
 
         let snip_item = MenuItem::with_id(ID_SNIP, snip_label(&hk), true, None);
         let autostart_item = CheckMenuItem::with_id(
@@ -130,6 +136,8 @@ impl App {
             snip_at: None,
             next_idle: Instant::now() + IDLE_EVERY,
             dark_taskbar,
+            hotkey: hk,
+            mods: ModifiersState::empty(),
         })
     }
 
@@ -157,6 +165,20 @@ impl App {
             Event::WindowEvent {
                 window_id, event, ..
             } => {
+                if let WindowEvent::ModifiersChanged(m) = &event {
+                    self.mods = *m;
+                }
+                // The hotkey in one of our own windows: Windows hands it to
+                // the window there rather than to the hook (see
+                // `hotkey::own_windows_first`), so it is caught here, before
+                // the editor reads Win+Shift+S as a shortcut of its own.
+                if let WindowEvent::KeyboardInput { event: key, .. } = &event {
+                    if self.hotkey.pressed_in(key, self.mods) {
+                        linfo!("hotkey pressed in our own window");
+                        self.snip(target);
+                        return ControlFlow::WaitUntil(Instant::now());
+                    }
+                }
                 if let Some(i) = self.overlays.iter().position(|o| o.id() == window_id) {
                     match self.overlays[i].handle(&event) {
                         Outcome::Nothing => {}
@@ -330,6 +352,7 @@ impl App {
                 if cfg.hotkey != self.cfg.hotkey {
                     let hk = parse_hotkey(&cfg);
                     hotkey::set(hk);
+                    self.hotkey = hk;
                     self.snip_item.set_text(snip_label(&hk));
                     let _ = self
                         .tray
