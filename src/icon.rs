@@ -173,3 +173,24 @@ pub fn dump(dir: &Path) -> Result<(), String> {
     write("icon-1024.png", &png(1024, &app(1024))?)?;
     Ok(())
 }
+
+/// The site's icons: a favicon.ico of 16, 32 and 48, the two PNG favicons,
+/// and the 256 the page header and the link previews use.
+pub fn dump_site(dir: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let mut fav = Vec::new();
+    for edge in [16, 32, 48] {
+        fav.push((edge, png(edge, &app(edge))?));
+    }
+    let write = |name: &str, bytes: &[u8]| {
+        let p = dir.join(name);
+        std::fs::write(&p, bytes).map_err(|e| format!("{}: {e}", p.display()))?;
+        println!("{}", p.display());
+        Ok::<(), String>(())
+    };
+    write("favicon.ico", &ico(&fav))?;
+    write("favicon-16.png", &png(16, &app(16))?)?;
+    write("favicon-32.png", &png(32, &app(32))?)?;
+    write("icon-256.png", &png(256, &app(256))?)?;
+    Ok(())
+}

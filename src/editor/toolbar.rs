@@ -70,7 +70,10 @@ pub struct Palette {
 
 impl Palette {
     pub fn new(dark: bool) -> Self {
-        let (r, g, b) = traykit::theme::accent(dark);
+        Self::with_accent(dark, traykit::theme::accent(dark))
+    }
+
+    pub fn with_accent(dark: bool, (r, g, b): (u8, u8, u8)) -> Self {
         let accent = Color::from_rgba8(r, g, b, 255);
         let c = |v: u32| Color::from_rgba8((v >> 16) as u8, (v >> 8) as u8, v as u8, 255);
         if dark {

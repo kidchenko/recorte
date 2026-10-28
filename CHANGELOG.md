@@ -11,3 +11,5 @@
   Print again, starts a snip.
 - `config.json`: the hotkey, copy on snip, open the editor, auto-save and
   the folder, all picked up without a restart.
+- A landing page in `docs/` with a working copy of the editor to try in the
+  browser. Its pictures and icons are drawn by `print --render-docs`.

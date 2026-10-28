@@ -49,7 +49,8 @@ Print: snip a part of the screen, mark it up, copy it.
 
 usage:
   print                    run in the tray, or start a snip in the running copy
-  print --dump-icons [dir] write the app icon as PNGs and icon.ico";
+  print --dump-icons [dir] write the app icon as PNGs and icon.ico
+  print --render-docs [dir] draw the landing page's images (default docs/img)";
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -59,6 +60,15 @@ fn main() {
             traykit::util::attach_console();
             let dir = args.get(1).map(String::as_str).unwrap_or("assets");
             if let Err(e) = icon::dump(std::path::Path::new(dir)) {
+                eprintln!("print: {e}");
+                std::process::exit(1);
+            }
+        }
+        Some("--render-docs") => {
+            traykit::util::attach_console();
+            let dir =
+                std::path::PathBuf::from(args.get(1).map(String::as_str).unwrap_or("docs/img"));
+            if let Err(e) = render_docs(&dir) {
                 eprintln!("print: {e}");
                 std::process::exit(1);
             }
@@ -118,4 +128,28 @@ fn tray() {
     event_loop.run(move |event, target, control_flow| {
         *control_flow = app.handle(event, target);
     });
+}
+
+/// The landing page's pictures, drawn by the app itself: the editor in both
+/// themes around the sample snip, the sample on its own for the page's demo
+/// to draw on, and the icons. At 2x, for sharp screens.
+fn render_docs(dir: &std::path::Path) -> Result<(), String> {
+    icon::dump_site(dir)?;
+    let save = |name: &str, pm: Option<tiny_skia::Pixmap>| {
+        let pm = pm.ok_or("could not render")?;
+        let path = dir.join(name);
+        snip::Snip {
+            width: pm.width(),
+            height: pm.height(),
+            rgba: pm.take(),
+            scale: 2.0,
+        }
+        .save(&path)?;
+        println!("{}", path.display());
+        Ok::<(), String>(())
+    };
+    save("editor-dark.png", editor::render_sample(true, 2.0))?;
+    save("editor-light.png", editor::render_sample(false, 2.0))?;
+    save("sample.png", editor::sample_snip(2.0))?;
+    Ok(())
 }

@@ -10,6 +10,7 @@
 //! cache is rebuilt only when the window resizes or a blur changes the
 //! picture itself.
 
+mod sample;
 mod shapes;
 mod toolbar;
 
@@ -169,17 +170,9 @@ impl Editor {
     }
 
     /// The picture's zoom and top-left corner in the window.
-    fn fit(&self, (w, h): (u32, u32)) -> (f32, f32, f32) {
-        let s = self.scale();
-        let top = toolbar::HEIGHT * s;
-        let margin = MARGIN * s;
-        let (iw, ih) = (self.base.width() as f32, self.base.height() as f32);
-        let aw = (w as f32 - 2.0 * margin).max(1.0);
-        let ah = (h as f32 - top - 2.0 * margin).max(1.0);
-        let zoom = (aw / iw).min(ah / ih).min(1.0);
-        let ox = ((w as f32 - iw * zoom) / 2.0).round();
-        let oy = (top + (h as f32 - top - ih * zoom) / 2.0).round();
-        (zoom, ox, oy)
+    fn fit(&self, size: (u32, u32)) -> (f32, f32, f32) {
+        let dims = (self.base.width() as f32, self.base.height() as f32);
+        fit(dims, size, self.scale())
     }
 
     fn to_image(&self, (x, y): (f32, f32)) -> Point {
@@ -466,97 +459,27 @@ impl Editor {
         Some(crate::snip::fresh_path(self.save_dir.as_ref()?, name))
     }
 
-    fn ensure_cache(&mut self, size: (u32, u32)) -> Option<()> {
-        if self.cache.as_ref().is_some_and(|c| c.size == size) {
-            return Some(());
-        }
-        let (zoom, ox, oy) = self.fit(size);
-        let mut background = Pixmap::new(size.0, size.1)?;
-        background.fill(self.look.canvas);
-        let quality = if zoom < 1.0 {
-            FilterQuality::Bicubic
-        } else {
-            FilterQuality::Nearest
-        };
-        background.draw_pixmap(
-            0,
-            0,
-            self.shown.as_ref(),
-            &PixmapPaint {
-                quality,
-                ..PixmapPaint::default()
-            },
-            Transform::from_row(zoom, 0.0, 0.0, zoom, ox, oy),
-            None,
-        );
-        let (iw, ih) = (
-            self.base.width() as f32 * zoom,
-            self.base.height() as f32 * zoom,
-        );
-        let area = Rect::from_xywh(ox, oy, iw, ih)?;
-        let mut clip = Mask::new(size.0, size.1)?;
-        clip.fill_path(
-            &PathBuilder::from_rect(area),
-            FillRule::Winding,
-            false,
-            Transform::identity(),
-        );
-        self.cache = Some(Cache {
-            size,
-            background,
-            clip,
-        });
-        Some(())
-    }
-
     pub fn redraw(&mut self) {
         let size = self.view.size();
-        if size.0 == 0 || size.1 == 0 || self.ensure_cache(size).is_none() {
-            return;
-        }
-        let (zoom, ox, oy) = self.fit(size);
-        let t = Transform::from_row(zoom, 0.0, 0.0, zoom, ox, oy);
-        let s = self.scale();
-        let Some(cache) = &self.cache else { return };
-        let mut frame = cache.background.clone();
-        for shape in self.shapes.iter().chain(self.live.iter()) {
-            if shape.tool != Tool::Blur {
-                shape.draw(&mut frame.as_mut(), t, Some(&cache.clip));
-            }
-        }
-        // A blur being dragged is shown as its box; it is applied on release.
-        if let Some((x, y, w, h)) = self
-            .live
-            .as_ref()
-            .filter(|l| l.tool == Tool::Blur)
-            .and_then(Shape::rect)
-        {
-            if let Some(r) = Rect::from_xywh(x, y, w.max(0.5), h.max(0.5)) {
-                let path = PathBuilder::from_rect(r);
-                let mut paint = Paint::default();
-                paint.set_color_rgba8(255, 255, 255, 60);
-                frame.fill_path(&path, &paint, FillRule::Winding, t, Some(&cache.clip));
-                paint.set_color_rgba8(0, 0, 0, 200);
-                let stroke = Stroke {
-                    width: s / zoom,
-                    dash: tiny_skia::StrokeDash::new(vec![4.0 * s / zoom, 3.0 * s / zoom], 0.0),
-                    ..Stroke::default()
-                };
-                frame.stroke_path(&path, &paint, &stroke, t, None);
-            }
-        }
-        let state = toolbar::State {
-            tool: self.tool,
-            color: self.color_index(),
-            size: self.size,
-            can_undo: !self.shapes.is_empty(),
-            can_redo: !self.undone.is_empty(),
-            hover: self.hover,
-            pressed: self.pressed,
-            done: self.done.map(|(h, _)| h),
+        let scene = Scene {
+            shown: &self.shown,
+            shapes: &self.shapes,
+            live: self.live.as_ref(),
+            ui: toolbar::State {
+                tool: self.tool,
+                color: self.color_index(),
+                size: self.size,
+                can_undo: !self.shapes.is_empty(),
+                can_redo: !self.undone.is_empty(),
+                hover: self.hover,
+                pressed: self.pressed,
+                done: self.done.map(|(h, _)| h),
+            },
+            look: &self.look,
         };
-        toolbar::draw(&mut frame, s, &state, &self.look);
-
+        let Some(frame) = compose(&scene, size, self.scale(), &mut self.cache) else {
+            return;
+        };
         let (fw, fh) = (frame.width(), frame.height());
         let data = frame.data();
         self.view.present(|buf, w, h| {
@@ -569,4 +492,157 @@ impl Editor {
             }
         });
     }
+}
+
+/// Everything a frame is drawn from, so one can be drawn without a window
+/// (see [`render_sample`]).
+struct Scene<'a> {
+    shown: &'a Pixmap,
+    shapes: &'a [Shape],
+    live: Option<&'a Shape>,
+    ui: toolbar::State,
+    look: &'a Palette,
+}
+
+/// The picture's zoom and top-left corner in a window of `(w, h)`.
+fn fit((iw, ih): (f32, f32), (w, h): (u32, u32), s: f32) -> (f32, f32, f32) {
+    let top = toolbar::HEIGHT * s;
+    let margin = MARGIN * s;
+    let aw = (w as f32 - 2.0 * margin).max(1.0);
+    let ah = (h as f32 - top - 2.0 * margin).max(1.0);
+    let zoom = (aw / iw).min(ah / ih).min(1.0);
+    let ox = ((w as f32 - iw * zoom) / 2.0).round();
+    let oy = (top + (h as f32 - top - ih * zoom) / 2.0).round();
+    (zoom, ox, oy)
+}
+
+fn compose(scene: &Scene, size: (u32, u32), s: f32, cache: &mut Option<Cache>) -> Option<Pixmap> {
+    let dims = (scene.shown.width() as f32, scene.shown.height() as f32);
+    let (zoom, ox, oy) = fit(dims, size, s);
+    if !cache.as_ref().is_some_and(|c| c.size == size) {
+        let mut background = Pixmap::new(size.0, size.1)?;
+        background.fill(scene.look.canvas);
+        let quality = if zoom < 1.0 {
+            FilterQuality::Bicubic
+        } else {
+            FilterQuality::Nearest
+        };
+        background.draw_pixmap(
+            0,
+            0,
+            scene.shown.as_ref(),
+            &PixmapPaint {
+                quality,
+                ..PixmapPaint::default()
+            },
+            Transform::from_row(zoom, 0.0, 0.0, zoom, ox, oy),
+            None,
+        );
+        let area = Rect::from_xywh(ox, oy, dims.0 * zoom, dims.1 * zoom)?;
+        let mut clip = Mask::new(size.0, size.1)?;
+        clip.fill_path(
+            &PathBuilder::from_rect(area),
+            FillRule::Winding,
+            false,
+            Transform::identity(),
+        );
+        *cache = Some(Cache {
+            size,
+            background,
+            clip,
+        });
+    }
+    let cache = cache.as_ref()?;
+    let t = Transform::from_row(zoom, 0.0, 0.0, zoom, ox, oy);
+    let mut frame = cache.background.clone();
+    for shape in scene.shapes.iter().chain(scene.live) {
+        if shape.tool != Tool::Blur {
+            shape.draw(&mut frame.as_mut(), t, Some(&cache.clip));
+        }
+    }
+    // A blur being dragged is shown as its box; it is applied on release.
+    if let Some((x, y, w, h)) = scene
+        .live
+        .filter(|l| l.tool == Tool::Blur)
+        .and_then(Shape::rect)
+    {
+        if let Some(r) = Rect::from_xywh(x, y, w.max(0.5), h.max(0.5)) {
+            let path = PathBuilder::from_rect(r);
+            let mut paint = Paint::default();
+            paint.set_color_rgba8(255, 255, 255, 60);
+            frame.fill_path(&path, &paint, FillRule::Winding, t, Some(&cache.clip));
+            paint.set_color_rgba8(0, 0, 0, 200);
+            let stroke = Stroke {
+                width: s / zoom,
+                dash: tiny_skia::StrokeDash::new(vec![4.0 * s / zoom, 3.0 * s / zoom], 0.0),
+                ..Stroke::default()
+            };
+            frame.stroke_path(&path, &paint, &stroke, t, None);
+        }
+    }
+    toolbar::draw(&mut frame, s, &scene.ui, scene.look);
+    Some(frame)
+}
+
+/// The editor as the landing page shows it: the sample snip with an arrow,
+/// a box, a highlight and a blur on it, at `scale`, without a window. The
+/// accent is Windows' default blue, so the picture is the same on any
+/// machine.
+pub fn render_sample(dark: bool, scale: f32) -> Option<Pixmap> {
+    let base = sample::snip(scale)?;
+    let s = scale;
+    let p = |x: f32, y: f32| Point::from_xy(x * s, y * s);
+    let mark = |tool, color: usize, from: Point, to: &[Point]| {
+        let mut shape = Shape::new(tool, COLORS[color], SIZES[1], s, from);
+        for &q in to {
+            shape.extend(q);
+        }
+        shape
+    };
+    let shapes = vec![
+        mark(Tool::Marker, 1, p(186.0, 66.0), &[p(330.0, 66.0)]),
+        mark(Tool::Blur, 0, p(196.0, 148.0), &[p(440.0, 172.0)]),
+        mark(Tool::Rect, 0, p(180.0, 214.0), &[p(536.0, 322.0)]),
+        mark(Tool::Arrow, 0, p(300.0, 384.0), &[p(456.0, 366.0)]),
+    ];
+    let mut shown = base.clone();
+    for r in shapes
+        .iter()
+        .filter(|m| m.tool == Tool::Blur)
+        .filter_map(Shape::rect)
+    {
+        shapes::pixelate(&mut shown, r, (10.0 * s).round() as u32);
+    }
+    let look = Palette::with_accent(
+        dark,
+        if dark {
+            (0x60, 0xcd, 0xff)
+        } else {
+            (0x00, 0x5f, 0xb8)
+        },
+    );
+    let scene = Scene {
+        shown: &shown,
+        shapes: &shapes,
+        live: None,
+        ui: toolbar::State {
+            tool: Tool::Arrow,
+            color: 0,
+            size: 1,
+            can_undo: true,
+            can_redo: false,
+            hover: None,
+            pressed: None,
+            done: None,
+        },
+        look: &look,
+    };
+    let w = ((toolbar::min_width() + 40.0).max(base.width() as f32 / s + 2.0 * MARGIN) * s) as u32;
+    let h = ((toolbar::HEIGHT + 2.0 * MARGIN) * s) as u32 + base.height();
+    compose(&scene, (w, h), s, &mut None)
+}
+
+/// The sample snip on its own, for the page's live demo to draw on.
+pub fn sample_snip(scale: f32) -> Option<Pixmap> {
+    sample::snip(scale)
 }

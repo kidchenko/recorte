@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Print: a snipping tool in the tray</title>
+<meta name="description" content="Press Win+Shift+S, drag across any part of the screen, and it's on the clipboard. Mark it up with a pen, highlighter, arrows, boxes and blur, then copy or save. Free and open source.">
+<link rel="icon" href="img/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" href="img/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="img/favicon-16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="img/icon-256.png">
+
+<meta property="og:title" content="Print: a snipping tool in the tray">
+<meta property="og:description" content="Win+Shift+S, drag, and it's on the clipboard. Arrows, boxes, highlighter and blur, then copy or save.">
+<meta property="og:image" content="https://josebarbosa.dev/print/img/icon-256.png">
+<meta property="og:url" content="https://josebarbosa.dev/print/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+
+<style>
+  /* Blue to violet, from the app icon's tile; white, like its corners. */
+  :root {
+    --bg:      #0b0d1e;
+    --raised:  #13162b;
+    --line:    #262a4a;
+    --text:    #eef0fb;
+    --dim:     #aab0cc;
+    --faint:   #737a99;
+    --accent:  #8b9dff;
+    --on-acc:  #0d1033;
+    --radius:  14px;
+    --measure: 46rem;
+    /* The editor's toolbar, as the app draws it in dark mode. */
+    --e-bar:   #252525;
+    --e-line:  #333333;
+    --e-canvas:#161616;
+    --e-fg:    #e8e8e8;
+    --e-faint: #707070;
+    --e-hover: #353535;
+    --e-sel:   #404040;
+    --e-acc:   #60cdff;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:     #f7f8fd;
+      --raised: #eceefa;
+      --line:   #d9ddf0;
+      --text:   #11142c;
+      --dim:    #4b5178;
+      --faint:  #7d83a3;
+      --accent: #4338ca;
+      --on-acc: #ffffff;
+      --e-bar:  #f6f6f6;
+      --e-line: #d8d8d8;
+      --e-canvas:#dedede;
+      --e-fg:   #1f1f1f;
+      --e-faint:#b0b0b0;
+      --e-hover:#e6e6e6;
+      --e-sel:  #dadada;
+      --e-acc:  #005fb8;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.65 "Segoe UI Variable Text", "Segoe UI", system-ui,
+          -apple-system, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--measure); margin: 0 auto; padding: 0 20px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, kbd {
+    font-family: "Cascadia Code", "SF Mono", Consolas, ui-monospace, monospace;
+    font-size: .86em;
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: .12em .42em;
+    white-space: nowrap;
+  }
+  kbd { border-bottom-width: 2px; }
+
+  /* ------------------------------------------------------------------ hero */
+  header.wrap { text-align: center; padding-top: 84px; padding-bottom: 8px; }
+  header img.mark { width: 128px; height: 128px; filter: drop-shadow(0 18px 36px rgba(37,50,200,.4)); }
+  h1 {
+    font-size: clamp(2.7rem, 9vw, 4.2rem);
+    font-weight: 700;
+    letter-spacing: -.03em;
+    line-height: 1.04;
+    margin: 26px 0 0;
+  }
+  .tagline { font-size: clamp(1.12rem, 3.6vw, 1.45rem); color: var(--dim); margin: 14px auto 0; max-width: 30ch; }
+  .keys { margin: 22px 0 0; font-size: 1.05rem; color: var(--dim); }
+  .keys kbd { font-size: .95rem; padding: .2em .55em; color: var(--text); }
+
+  .cta { margin: 32px 0 0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .download {
+    display: inline-block;
+    font-weight: 650;
+    font-size: 1.04rem;
+    padding: 14px 28px;
+    border-radius: 11px;
+    background: var(--accent);
+    color: var(--on-acc);
+    transition: transform .12s ease, filter .12s ease;
+  }
+  .download:hover { text-decoration: none; transform: translateY(-1px); filter: brightness(1.07); }
+  .alt { margin: 18px 0 0; color: var(--faint); font-size: .94rem; }
+
+  /* ------------------------------------------------------- the demo editor */
+  .demo { margin: 64px auto 0; display: flex; flex-direction: column; align-items: center; max-width: 52rem; }
+  .editor {
+    width: 100%;
+    background: var(--e-canvas);
+    border: 1px solid var(--e-line);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0,0,0,.4);
+    user-select: none;
+  }
+  .bar {
+    display: flex; align-items: center; gap: 2px;
+    padding: 7px 8px; background: var(--e-bar); border-bottom: 1px solid var(--e-line);
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .bar::-webkit-scrollbar { display: none; }
+  .bar .sep { width: 12px; flex: none; }
+  .bar .push { flex: 1; min-width: 12px; }
+  .bar button {
+    all: unset; flex: none; position: relative;
+    width: 34px; height: 34px; border-radius: 6px;
+    display: grid; place-items: center; color: var(--e-fg); cursor: pointer;
+  }
+  .bar button:hover { background: var(--e-hover); }
+  .bar button:focus-visible { outline: 2px solid var(--e-acc); outline-offset: -2px; }
+  .bar button[aria-pressed="true"] { background: var(--e-sel); }
+  .bar button[aria-pressed="true"]::after {
+    content: ""; position: absolute; left: 30%; right: 30%; bottom: 3px; height: 2.5px;
+    border-radius: 2px; background: var(--e-acc);
+  }
+  .bar button:disabled { color: var(--e-faint); cursor: default; background: none; }
+  .bar svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .bar .swatch { width: 26px; height: 26px; border-radius: 50%; }
+  .bar .swatch::before {
+    content: ""; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--c); box-shadow: 0 0 0 1px color-mix(in srgb, var(--e-fg) 25%, transparent);
+  }
+  .bar .swatch[aria-pressed="true"] { background: none; box-shadow: 0 0 0 2px var(--e-acc); }
+  .bar .swatch[aria-pressed="true"]::after { display: none; }
+  .bar .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .stage { padding: 16px; display: grid; place-items: center; }
+  canvas {
+    display: block; width: 100%; max-width: 560px; height: auto;
+    cursor: crosshair; touch-action: none; outline: none;
+  }
+  .hint { color: var(--faint); font-size: .86rem; margin-top: 14px; text-align: center; }
+  .toast { color: var(--accent); }
+
+  /* ------------------------------------------------------------- sections */
+  section { padding: 76px 0 0; }
+  h2 { font-size: clamp(1.6rem, 5vw, 2.1rem); letter-spacing: -.02em; line-height: 1.15; margin: 0 0 10px; }
+  .lede { color: var(--dim); margin: 0 0 28px; max-width: 42ch; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)); gap: 14px; }
+  .card { background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 20px 18px; }
+  .card h3 { margin: 0 0 6px; font-size: 1.04rem; letter-spacing: -.01em; }
+  .card p { margin: 0; color: var(--dim); font-size: .95rem; line-height: 1.55; }
+
+  .shots { display: grid; gap: 16px; }
+  .shots img { width: 100%; height: auto; border-radius: 10px; box-shadow: 0 18px 44px rgba(0,0,0,.35); }
+
+  table { width: 100%; border-collapse: collapse; font-size: .96rem; }
+  td { padding: 12px 0; border-top: 1px solid var(--line); vertical-align: top; }
+  td:first-child { color: var(--dim); width: 34%; padding-right: 16px; }
+  tr:last-child td { border-bottom: 1px solid var(--line); }
+
+  .how { background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 22px 6px; }
+  .how p { margin: 0 0 16px; color: var(--dim); }
+  .how p b { color: var(--text); font-weight: 600; }
+
+  .apps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+  .apps li {
+    display: grid; grid-template-columns: 32px 1fr; gap: 0 14px; align-items: center;
+    padding: 14px 0; border-top: 1px solid var(--line);
+  }
+  .apps img { width: 32px; height: 32px; display: block; }
+  .apps a { font-weight: 600; }
+  .apps span { display: block; color: var(--dim); font-size: .92rem; line-height: 1.5; }
+
+  footer { padding: 84px 0 56px; color: var(--faint); font-size: .9rem; text-align: center; }
+  footer a { color: var(--dim); }
+
+  @media (max-width: 520px) {
+    header.wrap { padding-top: 56px; }
+    td:first-child { width: 40%; }
+    code { white-space: normal; overflow-wrap: anywhere; }
+    .apps { grid-template-columns: 1fr; }
+    .stage { padding: 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <img class="mark" src="img/icon-256.png" alt="" width="128" height="128">
+  <h1>Print</h1>
+  <p class="tagline">Snip any part of the screen, mark it up, copy it.</p>
+  <p class="keys"><kbd>Win</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>, like you're used to.</p>
+
+  <div class="cta">
+    <a class="download" href="https://github.com/kidchenko/print/releases/latest">Download for Windows</a>
+  </div>
+  <p class="alt">Windows 10 and 11. macOS and Linux are next.</p>
+</header>
+
+<div class="wrap demo" aria-label="A working copy of Print's editor">
+  <div class="editor">
+    <div class="bar" id="bar" role="toolbar" aria-label="Markup tools"></div>
+    <div class="stage">
+      <canvas id="canvas" width="1120" height="800" tabindex="0"
+              aria-label="A sample snip to draw on"></canvas>
+    </div>
+  </div>
+  <p class="hint" id="hint">Try it: draw on the snip, then copy it or save it. This is the editor, running in your browser.</p>
+</div>
+
+<main class="wrap">
+  <section>
+    <h2>The screenshot you meant to take</h2>
+    <p class="lede">Windows' Snipping Tool takes its time to open and has little to mark up with. Print is up before you've let go of the keys.</p>
+    <div class="grid">
+      <div class="card"><h3>Same keys</h3><p>Win+Shift+S freezes every monitor. Drag across what you want, and it's on the clipboard when you let go.</p></div>
+      <div class="card"><h3>Mark it up</h3><p>Pen, highlighter, arrow, box and blur, in six colours and three sizes, with undo. Each tool keeps its own colour.</p></div>
+      <div class="card"><h3>Blur that hides</h3><p>Big flat blocks over an email, a token or a name. Unlike a soft blur, they can't be sharpened back.</p></div>
+      <div class="card"><h3>Pastes anywhere</h3><p>On the clipboard as a bitmap and as a PNG, so Teams, Slack, Word, Paint and the browser all take it.</p></div>
+      <div class="card"><h3>Or save it</h3><p>Ctrl+S saves a PNG named by date and time, into Pictures\Screenshots unless you say otherwise.</p></div>
+      <div class="card"><h3>Small</h3><p>One app of under 1 MB with nothing else to install. Waiting in the tray it uses a few MB and no CPU.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The editor</h2>
+    <p class="lede">Drawn by Print itself, in your taskbar's light or dark theme and your accent colour.</p>
+    <div class="shots">
+      <img id="shot" src="img/editor-dark.png" alt="Print's editor with an arrow, a box, a highlight and a blur on a snip" width="640" height="482">
+    </div>
+  </section>
+
+  <section>
+    <h2>Keys</h2>
+    <table>
+      <tr><td><kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td><td>New snip. Also a left click on the tray icon.</td></tr>
+      <tr><td>Drag, <kbd>Enter</kbd>, <kbd>Esc</kbd></td><td>Select a region; take the whole monitor; cancel.</td></tr>
+      <tr><td><kbd>P</kbd> <kbd>H</kbd> <kbd>A</kbd> <kbd>R</kbd> <kbd>B</kbd></td><td>Pen, highlighter, arrow, box, blur.</td></tr>
+      <tr><td><kbd>1</kbd> to <kbd>6</kbd>, <kbd>[</kbd> <kbd>]</kbd></td><td>Colour; smaller and bigger.</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Undo, redo.</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Copy, save.</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>Esc</kbd></td><td>Another snip; close the editor.</td></tr>
+    </table>
+    <p class="alt" style="text-align:left">Any other hotkey, Ctrl+Shift+S or PrintScreen for example, is one line in the settings file, which the tray menu opens.</p>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <div class="how">
+      <p>Windows keeps <b>Win+Shift+S</b> for itself, so an app can't register it the usual way. Print watches the keyboard with a low-level hook instead, sees the keys before the shell does, and takes them. Quit Print and Windows has its shortcut back.</p>
+      <p>The screen is captured <b>once</b>, before anything appears, so you select on a still picture: a menu or a tooltip stays in the shot. Each monitor gets its own overlay at its own scale, so a snip from a 4K screen keeps every pixel.</p>
+      <p>The overlay and the editor are drawn by Print itself, with no browser engine and no GPU, the same code on every system. Nothing you snip leaves your computer.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>More small tray apps</h2>
+    <ul class="apps">
+      <li><img src="https://josebarbosa.dev/cafe/img/icon-256.png" alt="" width="32" height="32"><div><a href="https://josebarbosa.dev/cafe/">Cafe</a><span>Keeps your Mac or PC awake, from the tray.</span></div></li>
+      <li><img src="https://josebarbosa.dev/cantos/img/icon-256.png" alt="" width="32" height="32"><div><a href="https://josebarbosa.dev/cantos/">Cantos</a><span>Hot corners for Windows, macOS and Linux.</span></div></li>
+      <li><img src="https://josebarbosa.dev/cota/img/icon-256.png" alt="" width="32" height="32"><div><a href="https://josebarbosa.dev/cota/">Cota</a><span>Your Claude usage limits, in the tray.</span></div></li>
+      <li><img src="https://josebarbosa.dev/luz/img/icon-256.png" alt="" width="32" height="32"><div><a href="https://josebarbosa.dev/luz/">Luz</a><span>Warms your screen at night, like f.lux.</span></div></li>
+      <li><img src="https://josebarbosa.dev/porta/img/icon-256.png" alt="" width="32" height="32"><div><a href="https://josebarbosa.dev/porta/">Porta</a><span>What's listening on your ports, and a way to stop it.</span></div></li>
+      <li><img src="https://josebarbosa.dev/sonus/img/icon-256.png" alt="" width="32" height="32"><div><a href="https://josebarbosa.dev/sonus/">Sonus</a><span>A volume slider for every app.</span></div></li>
+      <li><img src="https://josebarbosa.dev/suavez/img/icon-256.png" alt="" width="32" height="32"><div><a href="https://josebarbosa.dev/suavez/">Sua Vez</a><span>Lights up when your coding agent finishes or needs you.</span></div></li>
+    </ul>
+  </section>
+</main>
+
+<footer class="wrap">
+  Made by <a href="https://github.com/kidchenko">kidchenko</a>. MIT licensed.
+  <a href="https://github.com/kidchenko/print">Source</a> and
+  <a href="https://github.com/kidchenko/print/releases">releases</a> on GitHub.
+  <a href="https://josebarbosa.dev/portfolio/">All apps</a>.
+</footer>
+
+<script>
+  // The screenshot follows the visitor's theme, as the app follows the taskbar.
+  const light = matchMedia('(prefers-color-scheme: light)');
+  const shot = document.getElementById('shot');
+  const pickShot = () => { shot.src = light.matches ? 'img/editor-light.png' : 'img/editor-dark.png'; };
+  pickShot();
+  light.addEventListener('change', pickShot);
+
+  // ------------------------------------------------------------- the editor
+  // The app's editor, rebuilt small: the same tools, colours, sizes and keys,
+  // drawing on the same sample the app renders for this page (at 2x).
+  const COLORS = ['#e53935', '#ffd600', '#43a047', '#1e88e5', '#212121', '#ffffff'];
+  const SIZES = [0.6, 1, 1.8];
+  const TOOLS = [
+    { id: 'pen',    key: 'p', label: 'Pen (P)',         width: 3,  svg: '<path d="M3.5 16.5l1-4 9-9 3 3-9 9z"/><path d="M11.5 5.5l3 3"/>' },
+    { id: 'marker', key: 'h', label: 'Highlighter (H)', width: 16, svg: '<path d="M6 12l6-8 4 3-6 8z"/><path d="M6 12l-1 3 2 1 3-1"/><path d="M3 18.5h14" stroke="#ffd600" stroke-width="2.6"/>' },
+    { id: 'arrow',  key: 'a', label: 'Arrow (A)',       width: 4,  svg: '<path d="M4 16L15 5"/><path d="M8 5h7v7"/>' },
+    { id: 'rect',   key: 'r', label: 'Box (R)',         width: 3,  svg: '<rect x="3" y="5" width="14" height="10"/>' },
+    { id: 'blur',   key: 'b', label: 'Blur (B)',        width: 0,  svg: [0,1,2].flatMap(r => [0,1,2].map(c =>
+        `<rect x="${3+c*5}" y="${3+r*5}" width="4.2" height="4.2" fill="currentColor" stroke="none" opacity="${(r+c)%2 ? .35 : 1}"/>`)).join('') },
+  ];
+  const ICON = {
+    undo: '<path d="M8 4.5l-4 4 4 4"/><path d="M4 8.5h8c6 0 6 8 0 8H8"/>',
+    redo: '<path d="M12 4.5l4 4-4 4"/><path d="M16 8.5H8c-6 0-6 8 0 8h4"/>',
+    copy: '<rect x="7" y="3" width="10" height="11" rx="2"/><rect x="3" y="7" width="10" height="11" rx="2" fill="var(--e-bar)"/>',
+    save: '<path d="M10 3v9.5"/><path d="M6 8.5l4 4 4-4"/><path d="M4 13v4h12v-4"/>',
+    tick: '<path d="M4.5 10.5l4 4 7-8.5" stroke="var(--e-acc)"/>',
+  };
+  const SCALE = 2;  // the sample is drawn at 2x
+
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const bar = document.getElementById('bar');
+  const hint = document.getElementById('hint');
+  const base = new Image();
+  const shown = document.createElement('canvas');  // the sample with every blur applied
+  let shapes = [], undone = [], live = null;
+  let tool = 'pen', size = 1;
+  const colorOf = { pen: 0, marker: 1, arrow: 0, rect: 0, blur: 0 };
+
+  const button = (label, svg, onClick) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.title = label; b.setAttribute('aria-label', label);
+    b.innerHTML = svg ? `<svg viewBox="0 0 20 20">${svg}</svg>` : '';
+    b.addEventListener('click', onClick);
+    bar.appendChild(b);
+    return b;
+  };
+  const gap = (cls) => { const s = document.createElement('span'); s.className = cls; bar.appendChild(s); };
+
+  const toolButtons = TOOLS.map(t => button(t.label, t.svg, () => pickTool(t.id)));
+  gap('sep');
+  const swatches = COLORS.map((c, i) => {
+    const b = button(`Colour ${i + 1}`, '', () => { colorOf[tool] = i; sync(); });
+    b.className = 'swatch'; b.style.setProperty('--c', c);
+    return b;
+  });
+  gap('sep');
+  const sizeButton = button('Size ([ and ])', '', () => { size = (size + 1) % 3; sync(); });
+  sizeButton.innerHTML = '<span class="dot"></span>';
+  gap('sep');
+  const undoButton = button('Undo (Ctrl+Z)', ICON.undo, undo);
+  const redoButton = button('Redo (Ctrl+Y)', ICON.redo, redo);
+  gap('push');
+  const copyButton = button('Copy (Ctrl+C)', ICON.copy, copy);
+  const saveButton = button('Save (Ctrl+S)', ICON.save, save);
+
+  function pickTool(id) { tool = id; sync(); }
+
+  function sync() {
+    TOOLS.forEach((t, i) => toolButtons[i].setAttribute('aria-pressed', t.id === tool));
+    swatches.forEach((b, i) => b.setAttribute('aria-pressed', i === colorOf[tool]));
+    const d = [5, 7, 11][size];
+    sizeButton.firstChild.style.width = sizeButton.firstChild.style.height = d + 'px';
+    undoButton.disabled = !shapes.length;
+    redoButton.disabled = !undone.length;
+  }
+
+  // Pixelate, as the app does: flat blocks of 10 logical pixels.
+  function reblur() {
+    const c = shown.getContext('2d');
+    c.drawImage(base, 0, 0);
+    const block = 10 * SCALE;
+    for (const s of shapes.filter(s => s.tool === 'blur')) {
+      const [x0, y0, w, h] = rectOf(s).map(Math.round);
+      if (w < 1 || h < 1) continue;
+      const img = c.getImageData(x0, y0, w, h), d = img.data;
+      for (let by = 0; by < h; by += block) for (let bx = 0; bx < w; bx += block) {
+        const bw = Math.min(block, w - bx), bh = Math.min(block, h - by);
+        let r = 0, g = 0, b = 0;
+        for (let y = by; y < by + bh; y++) for (let x = bx; x < bx + bw; x++) {
+          const i = (y * w + x) * 4; r += d[i]; g += d[i + 1]; b += d[i + 2];
+        }
+        const n = bw * bh;
+        for (let y = by; y < by + bh; y++) for (let x = bx; x < bx + bw; x++) {
+          const i = (y * w + x) * 4; d[i] = r / n; d[i + 1] = g / n; d[i + 2] = b / n;
+        }
+      }
+      c.putImageData(img, x0, y0);
+    }
+  }
+
+  function rectOf(s) {
+    const [a, b] = [s.points[0], s.points[s.points.length - 1]];
+    return [Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(a.x - b.x), Math.abs(a.y - b.y)];
+  }
+
+  function drawShape(c, s) {
+    c.save();
+    c.strokeStyle = c.fillStyle = s.color;
+    c.lineWidth = s.width; c.lineCap = 'round'; c.lineJoin = 'round';
+    const p = s.points;
+    if (s.tool === 'pen' || s.tool === 'marker') {
+      if (s.tool === 'marker') { c.globalCompositeOperation = 'multiply'; c.lineCap = 'square'; }
+      c.beginPath(); c.moveTo(p[0].x, p[0].y);
+      if (p.length === 1) c.lineTo(p[0].x + .1, p[0].y);
+      for (const q of p.slice(1)) c.lineTo(q.x, q.y);
+      c.stroke();
+    } else if (s.tool === 'rect') {
+      const [x, y, w, h] = rectOf(s);
+      c.lineJoin = 'miter'; c.strokeRect(x, y, w, h);
+    } else if (s.tool === 'arrow' && p.length > 1) {
+      const a = p[0], b = p[p.length - 1], len = Math.hypot(b.x - a.x, b.y - a.y);
+      if (len >= 1) {
+        const head = Math.min(s.width * 3.2 + 6 * SCALE, len * .6), half = head * .6;
+        const dx = (b.x - a.x) / len, dy = (b.y - a.y) / len;
+        const bx = b.x - dx * head, by = b.y - dy * head;
+        c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x - dx * head * .5, b.y - dy * head * .5); c.stroke();
+        c.beginPath(); c.moveTo(b.x, b.y);
+        c.lineTo(bx - dy * half, by + dx * half); c.lineTo(bx + dy * half, by - dx * half);
+        c.closePath(); c.fill();
+      }
+    }
+    c.restore();
+  }
+
+  function render(c = ctx, withLive = true) {
+    c.drawImage(shown, 0, 0);
+    for (const s of shapes) if (s.tool !== 'blur') drawShape(c, s);
+    if (withLive && live) {
+      if (live.tool === 'blur') {
+        const [x, y, w, h] = rectOf(live);
+        c.save(); c.fillStyle = 'rgba(255,255,255,.24)'; c.fillRect(x, y, w, h);
+        c.setLineDash([8, 6]); c.strokeStyle = 'rgba(0,0,0,.8)'; c.lineWidth = 2; c.strokeRect(x, y, w, h); c.restore();
+      } else drawShape(c, live);
+    }
+  }
+
+  function at(e) {
+    const r = canvas.getBoundingClientRect();
+    const x = (e.clientX - r.left) * canvas.width / r.width;
+    const y = (e.clientY - r.top) * canvas.height / r.height;
+    return tool === 'blur'
+      ? { x: Math.max(0, Math.min(canvas.width, x)), y: Math.max(0, Math.min(canvas.height, y)) }
+      : { x, y };
+  }
+
+  canvas.addEventListener('pointerdown', e => {
+    if (e.button !== 0) { live = null; render(); return; }
+    canvas.setPointerCapture(e.pointerId);
+    const t = TOOLS.find(t => t.id === tool);
+    live = { tool, color: COLORS[colorOf[tool]], width: t.width * SIZES[size] * SCALE, points: [at(e)] };
+    render();
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!live) return;
+    const p = at(e), last = live.points[live.points.length - 1];
+    if (live.tool === 'pen' || live.tool === 'marker') {
+      if (Math.hypot(p.x - last.x, p.y - last.y) >= .75) live.points.push(p);
+    } else live.points = [live.points[0], p];
+    render();
+  });
+  const finish = () => {
+    if (!live) return;
+    const s = live; live = null;
+    const [, , w, h] = rectOf(s);
+    if (s.tool === 'pen' || s.tool === 'marker' || w >= 2 || h >= 2) {
+      shapes.push(s); undone = [];
+      if (s.tool === 'blur') reblur();
+    }
+    render(); sync();
+  };
+  canvas.addEventListener('pointerup', finish);
+  canvas.addEventListener('pointercancel', () => { live = null; render(); });
+
+  function undo() { if (shapes.length) { undone.push(shapes.pop()); reblur(); render(); sync(); } }
+  function redo() { if (undone.length) { shapes.push(undone.pop()); reblur(); render(); sync(); } }
+
+  function flash(btn, svg, message) {
+    btn.innerHTML = `<svg viewBox="0 0 20 20">${ICON.tick}</svg>`;
+    hint.innerHTML = `<span class="toast">${message}</span>`;
+    setTimeout(() => { btn.innerHTML = `<svg viewBox="0 0 20 20">${svg}</svg>`; }, 1200);
+  }
+
+  function exported() {
+    const out = document.createElement('canvas');
+    out.width = canvas.width; out.height = canvas.height;
+    render(out.getContext('2d'), false);
+    return new Promise(done => out.toBlob(done, 'image/png'));
+  }
+
+  async function copy() {
+    try {
+      const blob = await exported();
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      flash(copyButton, ICON.copy, 'Copied. Paste it anywhere.');
+    } catch {
+      hint.textContent = 'This browser would not copy an image; Save works.';
+    }
+  }
+
+  async function save() {
+    const blob = await exported();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Print sample.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    flash(saveButton, ICON.save, 'Saved to your downloads.');
+  }
+
+  // The app's keys, while the snip has focus.
+  canvas.addEventListener('keydown', e => {
+    const ctrl = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+    if (ctrl && k === 'z') { e.shiftKey ? redo() : undo(); }
+    else if (ctrl && k === 'y') redo();
+    else if (ctrl && k === 'c') copy();
+    else if (ctrl && k === 's') save();
+    else if (!ctrl && TOOLS.some(t => t.key === k)) pickTool(TOOLS.find(t => t.key === k).id);
+    else if (!ctrl && k >= '1' && k <= '6') { colorOf[tool] = +k - 1; sync(); }
+    else if (!ctrl && k === '[') { size = Math.max(0, size - 1); sync(); }
+    else if (!ctrl && k === ']') { size = Math.min(2, size + 1); sync(); }
+    else if (k === 'escape' && live) { live = null; render(); }
+    else return;
+    e.preventDefault();
+  });
+
+  base.onload = () => {
+    shown.width = canvas.width = base.naturalWidth;
+    shown.height = canvas.height = base.naturalHeight;
+    reblur(); render(); sync();
+  };
+  base.src = 'img/sample.png';
+</script>
+</body>
+</html>

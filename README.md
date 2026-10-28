@@ -7,6 +7,8 @@
 A snipping tool in the tray.<br>
 For Windows today; macOS and Linux next.
 
+**[josebarbosa.dev/print](https://josebarbosa.dev/print/)**
+
 </div>
 
 Press **Win+Shift+S**, drag across any part of the screen, and it's on the
@@ -68,6 +70,7 @@ The menu also has **Start at login**, **Open screenshots folder** and
 ```sh
 cargo build --release          # target/release/print.exe
 print --dump-icons assets      # redraw assets/icon.ico and the PNGs
+print --render-docs            # redraw docs/img: the site's icons and editor pictures
 ```
 
 The shared tray-app pieces (log, single instance, autostart, config, theme)
