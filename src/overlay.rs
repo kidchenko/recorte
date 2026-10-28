@@ -25,7 +25,8 @@ const DIM: u32 = 140; // of 255
 
 pub enum Outcome {
     Nothing,
-    Cancel,
+    /// Why, for the log: Esc, a right click, or the window being closed.
+    Cancel(&'static str),
     Done(Snip),
 }
 
@@ -123,10 +124,10 @@ impl Overlay {
                 state: ElementState::Pressed,
                 button: MouseButton::Right,
                 ..
-            } => return Outcome::Cancel,
+            } => return Outcome::Cancel("right click"),
             WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
                 match event.logical_key {
-                    Key::Escape => return Outcome::Cancel,
+                    Key::Escape => return Outcome::Cancel("Esc"),
                     // Enter with nothing selected takes the whole monitor.
                     Key::Enter => {
                         let rect = self.selection().unwrap_or((
@@ -140,7 +141,10 @@ impl Overlay {
                     _ => {}
                 }
             }
-            WindowEvent::CloseRequested => return Outcome::Cancel,
+            WindowEvent::CloseRequested => return Outcome::Cancel("closed"),
+            // Not a cancel, but the usual reason a snip goes wrong: another
+            // window (Snipping Tool's own overlay, say) took the focus.
+            WindowEvent::Focused(false) => traykit::linfo!("overlay lost the focus"),
             _ => {}
         }
         Outcome::Nothing

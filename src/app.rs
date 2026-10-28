@@ -160,8 +160,8 @@ impl App {
                 if let Some(i) = self.overlays.iter().position(|o| o.id() == window_id) {
                     match self.overlays[i].handle(&event) {
                         Outcome::Nothing => {}
-                        Outcome::Cancel => {
-                            linfo!("snip cancelled");
+                        Outcome::Cancel(why) => {
+                            linfo!("snip cancelled ({why})");
                             self.overlays.clear();
                         }
                         Outcome::Done(snip) => {

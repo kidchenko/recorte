@@ -2,9 +2,10 @@
 //! the shell registered it first, so `RegisterHotKey` fails on it.
 //!
 //! The hook runs on its own thread with its own message loop, ahead of
-//! every other program's input. It must answer fast (Windows drops a hook
-//! that keeps it waiting, `LowLevelHooksTimeout`), so on a match it only
-//! posts to the event loop and returns.
+//! every other program's input. It must answer fast: past
+//! `LowLevelHooksTimeout` Windows stops waiting, lets the keys through to
+//! Snipping Tool anyway, and eventually drops the hook. So on a match it only
+//! posts to its own thread and returns; the rest happens after.
 //!
 //! Swallowing the S is not quite enough. The shell watches Win: pressed and
 //! released with nothing in between opens the Start menu, and with the S
@@ -18,14 +19,15 @@ use std::sync::{Mutex, OnceLock};
 use traykit::{linfo, lwarn};
 use windows::Win32::Foundation::{LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::System::Threading::GetCurrentThreadId;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP,
     VIRTUAL_KEY, VK_CONTROL, VK_F1, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT, VK_SNAPSHOT,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    CallNextHookEx, DispatchMessageW, GetMessageW, SetWindowsHookExW, TranslateMessage, HC_ACTION,
-    KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG, WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN,
-    WM_SYSKEYUP,
+    CallNextHookEx, DispatchMessageW, GetMessageW, PostThreadMessageW, SetTimer, SetWindowsHookExW,
+    TranslateMessage, UnhookWindowsHookEx, HC_ACTION, HHOOK, KBDLLHOOKSTRUCT, LLKHF_INJECTED, MSG,
+    WH_KEYBOARD_LL, WM_APP, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_TIMER,
 };
 
 type Fire = Box<dyn Fn() + Send + Sync>;
@@ -35,9 +37,18 @@ static HOTKEY: Mutex<Option<Hotkey>> = Mutex::new(None);
 /// The key whose release is still to be swallowed, or 0. Also stops a held
 /// key's auto-repeat from starting a snip per repeat.
 static HELD: AtomicU32 = AtomicU32::new(0);
+/// The hook thread, which the hook posts to.
+static THREAD: AtomicU32 = AtomicU32::new(0);
 
 /// Unassigned (Windows lists 0xE8 as such); see the module comment.
 const DUMMY: VIRTUAL_KEY = VIRTUAL_KEY(0xE8);
+/// Posted by the hook to its own thread: "the hotkey was pressed". `wParam`
+/// is 1 when a modifier needs masking.
+const WM_FIRE: u32 = WM_APP + 1;
+/// Put the hook back at the front of the chain this often. Windows removes
+/// a low-level hook that times out too often, without saying so, and a hook
+/// installed later by another program runs before ours.
+const REHOOK_EVERY_MS: u32 = 30_000;
 
 pub fn start(hotkey: Hotkey, fire: Fire) {
     set(hotkey);
@@ -47,24 +58,49 @@ pub fn start(hotkey: Hotkey, fire: Fire) {
     let _ = std::thread::Builder::new()
         .name("print-hotkey".into())
         .spawn(|| unsafe {
-            let module = GetModuleHandleW(None).ok();
-            let hook =
-                match SetWindowsHookExW(WH_KEYBOARD_LL, Some(hook), module.map(Into::into), 0) {
-                    Ok(h) => h,
-                    Err(e) => {
-                        lwarn!("could not install the keyboard hook ({e}); the hotkey is off");
-                        return;
-                    }
-                };
+            THREAD.store(GetCurrentThreadId(), Ordering::Relaxed);
+            let Some(mut hook) = install() else { return };
             linfo!("keyboard hook installed");
-            // A low-level hook is called through this thread's message loop.
+            let _ = SetTimer(None, 0, REHOOK_EVERY_MS, None);
+            // The hook is called through this thread's message loop, and
+            // posts here what it cannot do inside the call.
             let mut msg = MSG::default();
             while GetMessageW(&mut msg, None, 0, 0).as_bool() {
-                let _ = TranslateMessage(&msg);
-                DispatchMessageW(&msg);
+                match msg.message {
+                    WM_FIRE => {
+                        if msg.wParam.0 == 1 {
+                            mask_modifier();
+                        }
+                        linfo!("hotkey pressed");
+                        if let Some(fire) = FIRE.get() {
+                            fire();
+                        }
+                    }
+                    WM_TIMER => {
+                        if let Some(fresh) = install() {
+                            let _ = UnhookWindowsHookEx(hook);
+                            hook = fresh;
+                        }
+                    }
+                    _ => {
+                        let _ = TranslateMessage(&msg);
+                        DispatchMessageW(&msg);
+                    }
+                }
             }
-            let _ = windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx(hook);
+            let _ = UnhookWindowsHookEx(hook);
         });
+}
+
+unsafe fn install() -> Option<HHOOK> {
+    let module = GetModuleHandleW(None).ok();
+    match SetWindowsHookExW(WH_KEYBOARD_LL, Some(hook), module.map(Into::into), 0) {
+        Ok(h) => Some(h),
+        Err(e) => {
+            lwarn!("could not install the keyboard hook ({e}); the hotkey is off");
+            None
+        }
+    }
 }
 
 pub fn set(hotkey: Hotkey) {
@@ -101,6 +137,9 @@ fn matches(code: u32) -> Option<Hotkey> {
 }
 
 /// Press and release [`DUMMY`], so a lone Win or Alt release does nothing.
+/// Never from inside the hook: injected input goes through the same hook
+/// chain, so sending it while the hook is still deciding can stall the hook
+/// past its timeout, and then Windows lets the original keys through.
 fn mask_modifier() {
     let key = |flags| INPUT {
         r#type: INPUT_KEYBOARD,
@@ -118,6 +157,8 @@ fn mask_modifier() {
     }
 }
 
+/// Decide and return: swallow the hotkey and post the rest to the thread.
+/// Anything slower here and Windows stops waiting for the answer.
 unsafe extern "system" fn hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     if code == HC_ACTION as i32 {
         let info = &*(lparam.0 as *const KBDLLHOOKSTRUCT);
@@ -127,19 +168,24 @@ unsafe extern "system" fn hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRE
             let msg = wparam.0 as u32;
             let code_vk = info.vkCode;
             if msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN {
-                if HELD.load(Ordering::Relaxed) == code_vk {
-                    // Auto-repeat of a hotkey already handled.
+                if let Some(hk) = matches(code_vk) {
+                    // Auto-repeat of a hotkey already handled: swallow, but
+                    // do not snip again.
+                    if HELD.swap(code_vk, Ordering::Relaxed) != code_vk {
+                        let mask = (hk.meta || hk.alt) as usize;
+                        let _ = PostThreadMessageW(
+                            THREAD.load(Ordering::Relaxed),
+                            WM_FIRE,
+                            WPARAM(mask),
+                            LPARAM(0),
+                        );
+                    }
                     return LRESULT(1);
                 }
-                if let Some(hk) = matches(code_vk) {
-                    HELD.store(code_vk, Ordering::Relaxed);
-                    if hk.meta || hk.alt {
-                        mask_modifier();
-                    }
-                    if let Some(fire) = FIRE.get() {
-                        fire();
-                    }
-                    return LRESULT(1);
+                // The key without the modifiers is just typing, even if a
+                // release was missed.
+                if HELD.load(Ordering::Relaxed) == code_vk {
+                    HELD.store(0, Ordering::Relaxed);
                 }
             } else if (msg == WM_KEYUP || msg == WM_SYSKEYUP)
                 && HELD.load(Ordering::Relaxed) == code_vk
