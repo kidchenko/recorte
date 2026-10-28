@@ -9,9 +9,8 @@
     <authors>kidchenko</authors>
     <copyright>Copyright (c) 2026 kidchenko</copyright>
     <projectUrl>https://github.com/kidchenko/recorte</projectUrl>
-    <!-- Pinned to a commit once the repo is public: jsDelivr cannot read a
-         private repo, and Chocolatey caches the icon by URL. -->
-    <iconUrl>https://cdn.jsdelivr.net/gh/kidchenko/recorte@main/assets/icon-256.png</iconUrl>
+    <!-- Pinned to a commit: Chocolatey caches the icon by URL. -->
+    <iconUrl>https://cdn.jsdelivr.net/gh/kidchenko/recorte@78fdad6eea1c7332da9a057d4c7024c3c5c3818f/assets/icon-256.png</iconUrl>
     <licenseUrl>https://github.com/kidchenko/recorte/blob/main/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <projectSourceUrl>https://github.com/kidchenko/recorte</projectSourceUrl>
