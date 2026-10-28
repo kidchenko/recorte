@@ -21,6 +21,11 @@ tiny-skia  = { version = "0.11", default-features = false, features = ["std", "s
 traykit    = { git = "https://github.com/kidchenko/traykit" }
 tray-icon  = "0.26"
 
+# softbuffer's X11 and Wayland backends, opened at run time (dlopen), so the
+# binary starts on either without linking both. KMS (no desktop) is left out.
+[target.'cfg(target_os = "linux")'.dependencies]
+softbuffer = { version = "0.4", default-features = false, features = ["x11", "x11-dlopen", "wayland", "wayland-dlopen"] }
+
 [target.'cfg(windows)'.dependencies]
 rfd = "0.15"
 
