@@ -32,7 +32,7 @@ impl Default for Config {
             hotkey: default_hotkey().into(),
             copy_on_snip: true,
             open_editor: true,
-            auto_save: false,
+            auto_save: true,
             save_folder: String::new(),
         }
     }

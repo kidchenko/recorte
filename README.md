@@ -61,7 +61,7 @@ apply within two seconds, the hotkey included.
 | `hotkey` | `Win+Shift+S` | Ctrl, Alt, Shift, Win, plus a letter, digit, F1-F24 or PrintScreen |
 | `copyOnSnip` | `true` | copy the moment the snip is taken |
 | `openEditor` | `true` | open the editor with each snip |
-| `autoSave` | `false` | also save every snip, as taken |
+| `autoSave` | `true` | also save every snip, as taken |
 | `saveFolder` | `""` | where to save; empty is `Pictures\Screenshots` |
 
 The menu also has **Start at login**, **Open screenshots folder** and
