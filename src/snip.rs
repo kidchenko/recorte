@@ -51,10 +51,11 @@ impl Snip {
 }
 
 /// `Recorte 2026-10-28 14-03-11.png`: sorts by time, and has no characters a
-/// file system or a chat upload would object to.
-pub fn file_name(t: LocalTime) -> String {
+/// file system or a chat upload would object to. `ext` is `png` for a snip
+/// and `mp4` for a recording.
+pub fn file_name(t: LocalTime, ext: &str) -> String {
     format!(
-        "Recorte {:04}-{:02}-{:02} {:02}-{:02}-{:02}.png",
+        "Recorte {:04}-{:02}-{:02} {:02}-{:02}-{:02}.{ext}",
         t.year, t.month, t.day, t.hour, t.minute, t.second
     )
 }
@@ -66,9 +67,9 @@ pub fn fresh_path(dir: &Path, name: &str) -> PathBuf {
     if !first.exists() {
         return first;
     }
-    let stem = name.trim_end_matches(".png");
+    let (stem, ext) = name.rsplit_once('.').unwrap_or((name, "png"));
     (2..)
-        .map(|n| dir.join(format!("{stem} ({n}).png")))
+        .map(|n| dir.join(format!("{stem} ({n}).{ext}")))
         .find(|p| !p.exists())
         .unwrap_or(first)
 }
@@ -76,10 +77,21 @@ pub fn fresh_path(dir: &Path, name: &str) -> PathBuf {
 /// The user's Pictures folder, wherever they moved it.
 #[cfg(windows)]
 pub fn pictures_dir() -> Option<PathBuf> {
+    known_folder(&windows::Win32::UI::Shell::FOLDERID_Pictures)
+}
+
+/// The user's Videos folder, wherever they moved it.
+#[cfg(windows)]
+pub fn videos_dir() -> Option<PathBuf> {
+    known_folder(&windows::Win32::UI::Shell::FOLDERID_Videos)
+}
+
+#[cfg(windows)]
+fn known_folder(id: &windows::core::GUID) -> Option<PathBuf> {
     use windows::Win32::System::Com::CoTaskMemFree;
-    use windows::Win32::UI::Shell::{FOLDERID_Pictures, SHGetKnownFolderPath, KF_FLAG_DEFAULT};
+    use windows::Win32::UI::Shell::{SHGetKnownFolderPath, KF_FLAG_DEFAULT};
     unsafe {
-        let p = SHGetKnownFolderPath(&FOLDERID_Pictures, KF_FLAG_DEFAULT, None).ok()?;
+        let p = SHGetKnownFolderPath(id, KF_FLAG_DEFAULT, None).ok()?;
         let path = p.to_string().ok().map(PathBuf::from);
         CoTaskMemFree(Some(p.0 as *const _));
         path
@@ -89,6 +101,17 @@ pub fn pictures_dir() -> Option<PathBuf> {
 #[cfg(not(windows))]
 pub fn pictures_dir() -> Option<PathBuf> {
     std::env::var_os("HOME").map(|h| PathBuf::from(h).join("Pictures"))
+}
+
+/// `Movies` on macOS, `Videos` on Linux.
+#[cfg(not(windows))]
+pub fn videos_dir() -> Option<PathBuf> {
+    let name = if cfg!(target_os = "macos") {
+        "Movies"
+    } else {
+        "Videos"
+    };
+    std::env::var_os("HOME").map(|h| PathBuf::from(h).join(name))
 }
 
 #[cfg(test)]
@@ -106,7 +129,20 @@ mod tests {
             second: 1,
             millis: 0,
         };
-        assert_eq!(file_name(t), "Recorte 2026-03-09 07-05-01.png");
+        assert_eq!(file_name(t, "png"), "Recorte 2026-03-09 07-05-01.png");
+        assert_eq!(file_name(t, "mp4"), "Recorte 2026-03-09 07-05-01.mp4");
+    }
+
+    #[test]
+    fn a_taken_name_gets_a_number_before_its_extension() {
+        let dir = std::env::temp_dir().join(format!("recorte-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        assert_eq!(fresh_path(&dir, "a.mp4"), dir.join("a.mp4"));
+        std::fs::write(dir.join("a.mp4"), b"").unwrap();
+        assert_eq!(fresh_path(&dir, "a.mp4"), dir.join("a (2).mp4"));
+        std::fs::write(dir.join("a (2).mp4"), b"").unwrap();
+        assert_eq!(fresh_path(&dir, "a.mp4"), dir.join("a (3).mp4"));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

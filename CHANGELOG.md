@@ -11,5 +11,16 @@
   Recorte again, starts a snip.
 - `config.json`: the hotkey, copy on snip, open the editor, auto-save and
   the folder, all picked up without a restart.
+- Screen recording. Win+Shift+R (taken over from Snipping Tool too) selects
+  an area; a dashed frame goes around it and a small bar at the top of the
+  screen; Win+Shift+R again or the red button starts, and once more stops.
+  The video is an H.264 MP4 at 30 frames a second, with the pointer, saved
+  to `Videos\Screen Recordings` and opened. The bar can pause, and has the
+  microphone and the computer's sound, each in the video or not. New
+  settings: `recordHotkey`, `recordFolder`, `openRecording`, `recordMic`,
+  `recordSystemAudio`. The tray menu has New recording and Open recordings
+  folder.
+- A menu at the top of the selection overlay, to change between a snip and
+  a recording, or close.
 - A landing page in `docs/` with a working copy of the editor to try in the
   browser. Its pictures and icons are drawn by `recorte --render-docs`.

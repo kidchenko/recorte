@@ -58,4 +58,21 @@ impl View {
         paint(&mut buffer, w, h);
         let _ = buffer.present();
     }
+
+    /// Put a picture the size of the window on screen. One of another size
+    /// (the window was resized since it was drawn) gives black, until the
+    /// redraw that follows a resize.
+    pub fn present_pixmap(&mut self, picture: &tiny_skia::Pixmap) {
+        let size = (picture.width(), picture.height());
+        let data = picture.data();
+        self.present(|buf, w, h| {
+            if (w, h) != size {
+                buf.fill(0);
+                return;
+            }
+            for (dst, px) in buf.iter_mut().zip(data.as_chunks::<4>().0) {
+                *dst = (px[0] as u32) << 16 | (px[1] as u32) << 8 | px[2] as u32;
+            }
+        });
+    }
 }

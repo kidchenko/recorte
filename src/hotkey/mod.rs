@@ -1,9 +1,9 @@
-//! The global hotkey.
+//! The global hotkeys: one to snip, one to record.
 //!
-//! Windows registers Win+Shift+S for itself, so `RegisterHotKey` cannot have
-//! it. A low-level keyboard hook sees the keys before the shell does and
-//! swallows the combination instead; that is the Windows side. The parsing
-//! and the label are shared.
+//! Windows registers Win+Shift+S and Win+Shift+R for itself, so
+//! `RegisterHotKey` cannot have them. A low-level keyboard hook sees the keys
+//! before the shell does and swallows the combination instead; that is the
+//! Windows side. The parsing and the label are shared.
 
 #[cfg(windows)]
 mod win;
@@ -15,18 +15,26 @@ mod other;
 #[cfg(not(windows))]
 use other as imp;
 
-/// Start listening, calling `fire` each time the hotkey is pressed. `fire`
-/// runs on the listener's thread and must return quickly.
-pub fn start(hotkey: Hotkey, fire: impl Fn() + Send + Sync + 'static) {
-    imp::start(hotkey, Box::new(fire));
+/// What a hotkey asks for.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Action {
+    Snip,
+    Record,
+}
+
+/// Start listening, calling `fire` each time one of the hotkeys is pressed.
+/// `fire` runs on the listener's thread and must return quickly. A
+/// combination given to both snips.
+pub fn start(snip: Hotkey, record: Hotkey, fire: impl Fn(Action) + Send + Sync + 'static) {
+    imp::start(snip, record, Box::new(fire));
 }
 
 /// Change the combination being listened for.
-pub fn set(hotkey: Hotkey) {
-    imp::set(hotkey);
+pub fn set(action: Action, hotkey: Hotkey) {
+    imp::set(action, hotkey);
 }
 
-/// Keep the system's own claim on the hotkey away from our windows: while
+/// Keep the system's own claim on the hotkeys away from our windows: while
 /// one of them has the focus, the keys reach it and [`Hotkey::pressed_in`]
 /// sees them. Call once, after the event loop exists.
 pub fn own_windows_first() {
@@ -226,6 +234,13 @@ mod tests {
         let hk = Hotkey::parse("Win+Shift+S").unwrap();
         assert!(hk.meta && hk.shift && !hk.ctrl && !hk.alt);
         assert_eq!(hk.key, Key::Char(b'S'));
+    }
+
+    #[test]
+    fn the_recording_default_parses() {
+        let hk = Hotkey::parse("Win+Shift+R").unwrap();
+        assert!(hk.meta && hk.shift && !hk.ctrl && !hk.alt);
+        assert_eq!(hk.key, Key::Char(b'R'));
     }
 
     #[test]

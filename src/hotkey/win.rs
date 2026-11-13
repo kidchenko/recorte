@@ -1,5 +1,6 @@
-//! A low-level keyboard hook, which is the only way to have Win+Shift+S:
-//! the shell registered it first, so `RegisterHotKey` fails on it.
+//! A low-level keyboard hook, which is the only way to have Win+Shift+S and
+//! Win+Shift+R: the shell registered them first, so `RegisterHotKey` fails
+//! on them.
 //!
 //! The hook runs on its own thread with its own message loop, ahead of
 //! every other program's input. It must answer fast: past
@@ -7,13 +8,13 @@
 //! Snipping Tool anyway, and eventually drops the hook. So on a match it only
 //! posts to its own thread and returns; the rest happens after.
 //!
-//! Swallowing the S is not quite enough. The shell watches Win: pressed and
-//! released with nothing in between opens the Start menu, and with the S
-//! swallowed, nothing came in between. So a key nobody uses (0xE8, which
+//! Swallowing the letter is not quite enough. The shell watches Win: pressed
+//! and released with nothing in between opens the Start menu, and with the
+//! letter swallowed, nothing came in between. So a key nobody uses (0xE8, which
 //! Windows leaves unassigned) is pressed and released in its place, the
 //! same trick PowerToys uses.
 
-use super::{Hotkey, Key};
+use super::{Action, Hotkey, Key};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Mutex, OnceLock};
 use traykit::{linfo, lwarn};
@@ -30,10 +31,15 @@ use windows::Win32::UI::WindowsAndMessaging::{
     WH_KEYBOARD_LL, WM_APP, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_TIMER,
 };
 
-type Fire = Box<dyn Fn() + Send + Sync>;
+type Fire = Box<dyn Fn(Action) + Send + Sync>;
+
+/// In the order a key is matched against them, so a combination given to
+/// both snips.
+const ACTIONS: [Action; 2] = [Action::Snip, Action::Record];
 
 static FIRE: OnceLock<Fire> = OnceLock::new();
-static HOTKEY: Mutex<Option<Hotkey>> = Mutex::new(None);
+/// The combination for each of [`ACTIONS`].
+static HOTKEYS: Mutex<[Option<Hotkey>; 2]> = Mutex::new([None; 2]);
 /// The key whose release is still to be swallowed, or 0. Also stops a held
 /// key's auto-repeat from starting a snip per repeat.
 static HELD: AtomicU32 = AtomicU32::new(0);
@@ -46,20 +52,21 @@ static TAKE_INJECTED: AtomicBool = AtomicBool::new(false);
 
 /// Unassigned (Windows lists 0xE8 as such); see the module comment.
 const DUMMY: VIRTUAL_KEY = VIRTUAL_KEY(0xE8);
-/// Posted by the hook to its own thread: "the hotkey was pressed". `wParam`
-/// is 1 when a modifier needs masking.
+/// Posted by the hook to its own thread: "a hotkey was pressed". `wParam` is
+/// 1 when a modifier needs masking, `lParam` the index in [`ACTIONS`].
 const WM_FIRE: u32 = WM_APP + 1;
 /// Put the hook back at the front of the chain this often. Windows removes
 /// a low-level hook that times out too often, without saying so, and a hook
 /// installed later by another program runs before ours.
 const REHOOK_EVERY_MS: u32 = 30_000;
 
-pub fn start(hotkey: Hotkey, fire: Fire) {
+pub fn start(snip: Hotkey, record: Hotkey, fire: Fire) {
     TAKE_INJECTED.store(
         std::env::var("RECORTE_TEST_KEYS").is_ok_and(|v| v == "1"),
         Ordering::Relaxed,
     );
-    set(hotkey);
+    set(Action::Snip, snip);
+    set(Action::Record, record);
     if FIRE.set(fire).is_err() {
         return;
     }
@@ -79,9 +86,10 @@ pub fn start(hotkey: Hotkey, fire: Fire) {
                         if msg.wParam.0 == 1 {
                             mask_modifier();
                         }
-                        linfo!("hotkey pressed");
+                        let action = ACTIONS[(msg.lParam.0 as usize).min(ACTIONS.len() - 1)];
+                        linfo!("hotkey pressed ({action:?})");
                         if let Some(fire) = FIRE.get() {
-                            fire();
+                            fire(action);
                         }
                     }
                     WM_TIMER => {
@@ -111,9 +119,10 @@ unsafe fn install() -> Option<HHOOK> {
     }
 }
 
-pub fn set(hotkey: Hotkey) {
-    if let Ok(mut h) = HOTKEY.lock() {
-        *h = Some(hotkey);
+pub fn set(action: Action, hotkey: Hotkey) {
+    let index = ACTIONS.iter().position(|a| *a == action).unwrap_or(0);
+    if let Ok(mut h) = HOTKEYS.lock() {
+        h[index] = Some(hotkey);
     }
 }
 
@@ -130,18 +139,26 @@ fn down(key: VIRTUAL_KEY) -> bool {
     (unsafe { GetAsyncKeyState(key.0 as i32) } as u16 & 0x8000) != 0
 }
 
-/// Is `vk` going down with exactly the hotkey's modifiers held?
-fn matches(code: u32) -> Option<Hotkey> {
-    let hk = (*HOTKEY.lock().ok()?)?;
-    if code != vk(hk.key) {
+/// Is `code` going down with exactly the modifiers of one of the hotkeys
+/// held? Which one, as an index in [`ACTIONS`].
+fn matches(code: u32) -> Option<(usize, Hotkey)> {
+    let hotkeys = *HOTKEYS.lock().ok()?;
+    // This runs for every key typed anywhere, so the modifiers are only
+    // asked about for a key that is one of the hotkeys'.
+    if !hotkeys.iter().flatten().any(|hk| code == vk(hk.key)) {
         return None;
     }
     let meta = down(VK_LWIN) || down(VK_RWIN);
-    let exact = meta == hk.meta
-        && down(VK_SHIFT) == hk.shift
-        && down(VK_CONTROL) == hk.ctrl
-        && down(VK_MENU) == hk.alt;
-    exact.then_some(hk)
+    let (shift, ctrl, alt) = (down(VK_SHIFT), down(VK_CONTROL), down(VK_MENU));
+    hotkeys.iter().enumerate().find_map(|(i, hk)| {
+        let hk = (*hk)?;
+        let exact = code == vk(hk.key)
+            && meta == hk.meta
+            && shift == hk.shift
+            && ctrl == hk.ctrl
+            && alt == hk.alt;
+        exact.then_some((i, hk))
+    })
 }
 
 /// Press and release [`DUMMY`], so a lone Win or Alt release does nothing.
@@ -178,16 +195,16 @@ unsafe extern "system" fn hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRE
             let msg = wparam.0 as u32;
             let code_vk = info.vkCode;
             if msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN {
-                if let Some(hk) = matches(code_vk) {
+                if let Some((action, hk)) = matches(code_vk) {
                     // Auto-repeat of a hotkey already handled: swallow, but
-                    // do not snip again.
+                    // do not fire again.
                     if HELD.swap(code_vk, Ordering::Relaxed) != code_vk {
                         let mask = (hk.meta || hk.alt) as usize;
                         let _ = PostThreadMessageW(
                             THREAD.load(Ordering::Relaxed),
                             WM_FIRE,
                             WPARAM(mask),
-                            LPARAM(0),
+                            LPARAM(action as isize),
                         );
                     }
                     return LRESULT(1);
@@ -210,7 +227,8 @@ unsafe extern "system" fn hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRE
 
 /// Register for raw keyboard input with `RIDEV_NOHOTKEYS`: while one of our
 /// windows has the focus, Windows does not act on hotkeys other programs
-/// registered, Win+Shift+S among them, and the keys reach the window.
+/// registered, Win+Shift+S and Win+Shift+R among them, and the keys reach
+/// the window.
 ///
 /// The hook alone is not enough there. With our own editor in front,
 /// Windows has been seen to pass Win+Shift+S to Snipping Tool without

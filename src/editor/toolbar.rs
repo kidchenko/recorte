@@ -57,15 +57,17 @@ pub struct State {
     pub done: Option<Hit>,
 }
 
+/// The colours of a bar and its buttons. The recording bar is drawn with
+/// them too, so the two look like one app.
 pub struct Palette {
     pub canvas: Color,
-    bar: Color,
-    line: Color,
-    fg: Color,
-    faint: Color,
-    hover: Color,
-    selected: Color,
-    accent: Color,
+    pub bar: Color,
+    pub line: Color,
+    pub fg: Color,
+    pub faint: Color,
+    pub hover: Color,
+    pub selected: Color,
+    pub accent: Color,
 }
 
 impl Palette {

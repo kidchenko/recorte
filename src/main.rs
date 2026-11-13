@@ -4,14 +4,16 @@
 //! Recorte is a snipping tool in the tray: a hotkey freezes the screen, you
 //! drag out a part of it, and it is on the clipboard. An editor opens with
 //! it for a pen, a highlighter, arrows, boxes and blur, then copy or save.
+//! A second hotkey records a part of the screen to an MP4 instead.
 //!
 //! | module      | responsibility                                            |
 //! |-------------|-----------------------------------------------------------|
 //! | `app`       | the tray icon and menu, and moving a snip along           |
-//! | `hotkey`    | the global hotkey (Win+Shift+S taken over from Windows)   |
+//! | `hotkey`    | the global hotkeys (Win+Shift+S and R, taken from Windows)|
 //! | `capture`   | a picture of every screen at once                         |
 //! | `overlay`   | the frozen, dimmed screen you drag a selection on         |
 //! | `editor`    | the markup window: tools, undo, copy, save                |
+//! | `record`    | a recording: its frame and bar, and filming to an MP4     |
 //! | `snip`      | the cropped picture, as PNG, and where it is saved        |
 //! | `clipboard` | putting a picture on the clipboard                        |
 //! | `view`      | a window that is a plain pixel buffer                     |
@@ -30,6 +32,7 @@ mod editor;
 mod hotkey;
 mod icon;
 mod overlay;
+mod record;
 mod snip;
 mod view;
 

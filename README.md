@@ -34,6 +34,33 @@ it uses a few MB of memory and no CPU.
 Recorte takes Win+Shift+S over from Windows: while Recorte is running, the key
 opens Recorte and not Snipping Tool. Quit Recorte and Windows has it back.
 
+## Recording the screen
+
+- **Win+Shift+R**, or **New recording** in the tray menu, freezes the screen
+  the same way. Drag across the area to record, or **Enter** for the whole
+  monitor.
+- A thin dashed frame goes around the area, and a small bar at the top of
+  the screen. Nothing is filmed yet, so there's time to get the screen ready.
+- **Win+Shift+R** again, or the red button, starts it and the frame turns
+  red. Once more, or the stop button, stops it, and the video is saved to
+  `Videos\Screen Recordings\Recorte 2026-10-28 14-03-11.mp4` and opens.
+- While it films, the first button is a pause. What happens until you press
+  it again is left out of the video.
+- The microphone and the speaker on the bar say what sound is in the video:
+  your voice, what the computer plays, both or neither. They can be changed
+  while it films, and the next recording starts the way you left them.
+- The cross on the bar closes it. Once it films, the cross is a bin that
+  throws the video away, and asks for a second click before it does.
+- The bar can be dragged out of the way by its clock.
+
+While you're choosing, a small menu at the top of the screen shows a camera
+and a film camera: click one, or press the other hotkey, to change between a
+snip and a recording of what you select next.
+
+The video is H.264 in an MP4 at 30 frames a second, with the mouse pointer
+and an AAC sound track. The frame and the bar aren't in it. Win+Shift+R is taken
+over from Snipping Tool like Win+Shift+S.
+
 ## The editor
 
 | | tool | key |
@@ -54,18 +81,23 @@ done. Saving suggests `Pictures\Screenshots\Recorte 2026-10-28 14-03-11.png`.
 ## Settings
 
 **Edit settings** in the menu opens `%APPDATA%\Recorte\config.json`. Changes
-apply within two seconds, the hotkey included.
+apply within two seconds, the hotkeys included.
 
 | setting | default | |
 |---|---|---|
 | `hotkey` | `Win+Shift+S` | Ctrl, Alt, Shift, Win, plus a letter, digit, F1-F24 or PrintScreen |
+| `recordHotkey` | `Win+Shift+R` | the same, for recording |
 | `copyOnSnip` | `true` | copy the moment the snip is taken |
 | `openEditor` | `true` | open the editor with each snip |
 | `autoSave` | `true` | also save every snip, as taken |
 | `saveFolder` | `""` | where to save; empty is `Pictures\Screenshots` |
+| `recordFolder` | `""` | where recordings go; empty is `Videos\Screen Recordings` |
+| `openRecording` | `true` | open each recording in your video player when it's done |
+| `recordMic` | `false` | the microphone is in a recording; the bar's button changes it |
+| `recordSystemAudio` | `true` | the same for what the computer plays |
 
-The menu also has **Start at login**, **Open screenshots folder** and
-**Open log** (`%APPDATA%\Recorte\recorte.log`; `RECORTE_LOG=debug` for more).
+The menu also has **Start at login**, **Open screenshots folder**,
+**Open recordings folder** and **Open log** (`%APPDATA%\Recorte\recorte.log`; `RECORTE_LOG=debug` for more).
 
 ## Building
 
@@ -92,8 +124,14 @@ The overlay and the editor are plain pixel buffers drawn with tiny-skia and
 shown with softbuffer: no webview, no GPU, and the same drawing code on
 every system. The screen is captured once, with GDI, before the overlay goes
 up, so you select on a still picture, menus and tooltips included. The
-hotkey is a low-level keyboard hook, the only way to have Win+Shift+S, which
-Windows registers for itself.
+hotkeys are a low-level keyboard hook, the only way to have Win+Shift+S and
+Win+Shift+R, which Windows registers for itself.
+
+A recording is the same GDI capture, of the area only, thirty times a second,
+encoded by Windows' own Media Foundation, on the graphics card when it has
+an encoder. The sound is the default microphone and a loopback of the
+default speakers, from WASAPI, mixed into one track. So there's still
+nothing to install and no codec in the binary.
 
 ## License
 

@@ -30,7 +30,8 @@ use tiny_skia::{
     Transform,
 };
 pub use toolbar::rounded as rounded_rect;
-use toolbar::{Hit, Palette};
+use toolbar::Hit;
+pub use toolbar::Palette;
 use traykit::{linfo, lwarn};
 
 /// Space around the picture, in logical pixels.
@@ -365,7 +366,7 @@ impl Editor {
             },
             Hit::Save => {
                 let snip = self.export();
-                let name = crate::snip::file_name(traykit::time::LocalTime::now());
+                let name = crate::snip::file_name(traykit::time::LocalTime::now(), "png");
                 if let Some(path) = self.ask_path(&name) {
                     match snip.save(&path) {
                         Ok(()) => {
@@ -480,17 +481,7 @@ impl Editor {
         let Some(frame) = compose(&scene, size, self.scale(), &mut self.cache) else {
             return;
         };
-        let (fw, fh) = (frame.width(), frame.height());
-        let data = frame.data();
-        self.view.present(|buf, w, h| {
-            if (w, h) != (fw, fh) {
-                buf.fill(0);
-                return;
-            }
-            for (dst, px) in buf.iter_mut().zip(data.as_chunks::<4>().0) {
-                *dst = (px[0] as u32) << 16 | (px[1] as u32) << 8 | px[2] as u32;
-            }
-        });
+        self.view.present_pixmap(&frame);
     }
 }
 
