@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+- macOS: snipping. Ctrl+Shift+S (Carbon hotkeys, no Accessibility
+  permission) freezes every display, each at its own pixel size, so a
+  Retina screen next to a plain one lines up; drag a region and it's on the
+  pasteboard as PNG and TIFF, and the editor opens. The overlay covers the
+  menu bar and the Dock, and appears over full-screen apps. The Screen
+  Recording permission is asked for on the first snip. Recording is not
+  there yet on macOS.
+- macOS packaging: `build.sh` makes Recorte.app and, with `--dmg`, a disk
+  image. Releases carry a universal Recorte-<version>.dmg, and the Homebrew
+  tap has a `recorte` cask. The website offers both downloads and shows the
+  visitor's platform first.
+
 - First version, for Windows. Win+Shift+S (taken over from Snipping Tool)
   freezes every monitor; drag a region and it's on the clipboard as a DIB
   and a PNG. An editor opens with it: pen, highlighter, arrow, box and

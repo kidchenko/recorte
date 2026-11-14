@@ -5,7 +5,7 @@
 # Recorte
 
 A snipping tool in the tray.<br>
-For Windows today; macOS and Linux next.
+For Windows and macOS; Linux next.
 
 <sub><i>recorte</i>: Portuguese for <i>clipping</i>, a piece cut out</sub>
 
@@ -78,6 +78,21 @@ tool remembers its own colour, so the highlighter stays yellow.
 **Ctrl+N** a new snip, **Esc** close. Copy and save show a tick when they're
 done. Saving suggests `Pictures\Screenshots\Recorte 2026-10-28 14-03-11.png`.
 
+## On a Mac
+
+Snipping works the same, with **Ctrl+Shift+S** (macOS keeps Cmd+Shift+3
+to 5 for its own screenshots). The icon is in the menu bar, not the Dock.
+
+- The first snip asks for the **Screen Recording** permission. Allow it in
+  System Settings > Privacy & Security > Screen & System Audio Recording,
+  then quit Recorte and start it again: macOS applies it only to a fresh
+  start. Without it macOS shows the wallpaper and no windows.
+- A snip is on the clipboard as PNG and TIFF, and saved to
+  `~/Pictures/Screenshots`.
+- Recording the screen isn't there yet on a Mac; Ctrl+Shift+R selects an
+  area, but filming it says so.
+- Settings and the log are in `~/Library/Application Support/Recorte`.
+
 ## Settings
 
 **Edit settings** in the menu opens `%APPDATA%\Recorte\config.json`. Changes
@@ -113,6 +128,19 @@ recorte --render-docs          # redraw docs\img: the site's icons and editor pi
 and a `Recorte-Setup.exe` copy, the name the download link uses. The installer
 needs [Inno Setup](https://jrsoftware.org/isinfo.php) (`winget install
 JRSoftware.InnoSetup`); without it the script still builds the exe.
+
+On a Mac, `build.sh` makes the app:
+
+```sh
+./build.sh                     # tests, release binary and dist/Recorte.app
+./build.sh --dmg               # ... and dist/Recorte-<version>.dmg
+./build.sh --install           # ... also copy it to /Applications and open it
+./build.sh --universal         # one binary for Apple silicon and Intel
+SIGN_IDENTITY="Developer ID Application: ..." ./build.sh
+```
+
+Without `SIGN_IDENTITY` the app is signed ad hoc, and macOS asks for the
+Screen Recording permission again after each rebuild.
 
 The shared tray-app pieces (log, single instance, autostart, config, theme)
 come from [traykit](https://github.com/kidchenko/traykit). To build against a
