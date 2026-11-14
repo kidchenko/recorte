@@ -16,7 +16,7 @@
 mod menu;
 pub use menu::TOP as MENU_TOP;
 
-use crate::capture::Frame;
+use crate::capture::{Frame, Shot};
 use crate::editor::Palette;
 use crate::hotkey::Action;
 use crate::snip::Snip;
@@ -26,7 +26,9 @@ use tao::event::{ElementState, MouseButton, WindowEvent};
 use tao::event_loop::EventLoopWindowTarget;
 use tao::keyboard::Key;
 use tao::monitor::MonitorHandle;
-use tao::window::{CursorIcon, Fullscreen, WindowBuilder, WindowId};
+#[cfg(not(target_os = "macos"))]
+use tao::window::Fullscreen;
+use tao::window::{CursorIcon, WindowBuilder, WindowId};
 
 /// How much of the screen's brightness is left outside the selection.
 const DIM: u32 = 140; // of 255
@@ -79,13 +81,11 @@ impl Overlay {
     pub fn new<T>(
         target: &EventLoopWindowTarget<T>,
         monitor: MonitorHandle,
-        frame: &Frame,
+        shot: &Shot,
         mode: Action,
         unfilmed: bool,
     ) -> Result<Self, String> {
-        let pos = monitor.position();
-        let size = monitor.size();
-        let bright = frame.crop(pos.x, pos.y, size.width, size.height);
+        let bright = shot.monitor(&monitor);
         let dim = bright.px.iter().map(|&p| dimmed(p)).collect();
 
         let builder = WindowBuilder::new()
@@ -95,8 +95,13 @@ impl Overlay {
             .with_always_on_top(true)
             .with_visible(false)
             // Brought up while a recording films, it is left out of it.
-            .with_content_protection(unfilmed)
-            .with_fullscreen(Some(Fullscreen::Borderless(Some(monitor.clone()))));
+            .with_content_protection(unfilmed);
+        // On macOS, a borderless fullscreen window is a fullscreen
+        // presentation of the app, menu bar hidden and title bar back; the
+        // overlay is instead an ordinary borderless window laid over the
+        // screen, menu bar included (see `cover`).
+        #[cfg(not(target_os = "macos"))]
+        let builder = builder.with_fullscreen(Some(Fullscreen::Borderless(Some(monitor.clone()))));
         #[cfg(windows)]
         let builder = {
             use tao::platform::windows::WindowBuilderExtWindows;
@@ -105,6 +110,8 @@ impl Overlay {
         let window = builder
             .build(target)
             .map_err(|e| format!("could not open the overlay: {e}"))?;
+        #[cfg(target_os = "macos")]
+        cover(&window, &monitor);
         window.set_cursor_icon(CursorIcon::Crosshair);
 
         let mut overlay = Self {
@@ -369,6 +376,33 @@ fn outline(buf: &mut [u32], stride: usize, (x, y, w, h): (usize, usize, usize, u
             line[x0..x.min(x1)].fill(0x00ff_ffff);
             line[(x + w).min(x1)..x1].fill(0x00ff_ffff);
         }
+    }
+}
+
+/// Lay `window` over the whole of `monitor`, menu bar and Dock included, on
+/// every Space, and over an app in full screen too.
+#[cfg(target_os = "macos")]
+fn cover(window: &tao::window::Window, monitor: &MonitorHandle) {
+    use objc2::msg_send;
+    use objc2::runtime::AnyObject;
+    use objc2_foundation::NSRect;
+    use tao::platform::macos::{MonitorHandleExtMacOS, WindowExtMacOS};
+
+    // Above the menu bar and the Dock: NSScreenSaverWindowLevel.
+    const LEVEL: isize = 1000;
+    // Can join all spaces, stationary, full-screen auxiliary.
+    const BEHAVIOR: usize = (1 << 0) | (1 << 4) | (1 << 8);
+
+    let ns_window = window.ns_window() as *mut AnyObject;
+    let Some(screen) = monitor.ns_screen() else {
+        return;
+    };
+    unsafe {
+        let frame: NSRect = msg_send![screen as *mut AnyObject, frame];
+        let _: () = msg_send![ns_window, setLevel: LEVEL];
+        let _: () = msg_send![ns_window, setCollectionBehavior: BEHAVIOR];
+        let _: () = msg_send![ns_window, setHasShadow: false];
+        let _: () = msg_send![ns_window, setFrame: frame, display: false];
     }
 }
 

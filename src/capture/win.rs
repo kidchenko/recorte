@@ -8,7 +8,7 @@
 //! The process is per-monitor DPI aware (the manifest says so), so every
 //! coordinate here is a physical pixel.
 
-use super::Frame;
+use super::{Frame, Shot};
 use windows::Win32::Graphics::Gdi::{
     BitBlt, CreateCompatibleDC, CreateDIBSection, DeleteDC, DeleteObject, GetDC, ReleaseDC,
     SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, CAPTUREBLT, DIB_RGB_COLORS, SRCCOPY,
@@ -17,7 +17,11 @@ use windows::Win32::UI::WindowsAndMessaging::{
     GetSystemMetrics, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN,
 };
 
-pub fn screen() -> Result<Frame, String> {
+pub fn screen() -> Result<Shot, String> {
+    desktop().map(Shot::whole)
+}
+
+fn desktop() -> Result<Frame, String> {
     unsafe {
         let x = GetSystemMetrics(SM_XVIRTUALSCREEN);
         let y = GetSystemMetrics(SM_YVIRTUALSCREEN);

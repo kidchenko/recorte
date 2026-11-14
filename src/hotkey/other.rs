@@ -1,4 +1,4 @@
-//! macOS and Linux: not written yet. The tray menu and a relaunch still
+//! Linux: not written yet. The tray menu and a relaunch still
 //! start a snip, and the menu a recording.
 
 use super::{Action, Hotkey};

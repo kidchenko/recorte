@@ -10,9 +10,14 @@ mod win;
 #[cfg(windows)]
 use win as imp;
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+mod mac;
+#[cfg(target_os = "macos")]
+use mac as imp;
+
+#[cfg(not(any(windows, target_os = "macos")))]
 mod other;
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 use other as imp;
 
 /// What a hotkey asks for.

@@ -329,7 +329,7 @@ impl App {
         }
         self.picking = action;
         let started = Instant::now();
-        let frame = match capture::screen() {
+        let shot = match capture::screen() {
             Ok(f) => f,
             Err(e) => {
                 lerror!("capture failed: {e}");
@@ -356,26 +356,31 @@ impl App {
                 GetDpiForSystem()
             );
         }
+        let mut focus = None;
         for monitor in target.available_monitors() {
-            let focus = under_pointer
+            let under = under_pointer
                 .as_ref()
                 .is_some_and(|m| m.position() == monitor.position());
-            match Overlay::new(target, monitor, &frame, action, filming) {
+            match Overlay::new(target, monitor, &shot, action, filming) {
                 Ok(o) => {
-                    if focus {
-                        o.focus();
+                    if under {
+                        focus = Some(self.overlays.len());
                     }
                     self.overlays.push(o);
                 }
                 Err(e) => lwarn!("{e}"),
             }
         }
+        // After they are all up: on macOS showing a window makes it the
+        // focused one, so the last monitor's would otherwise keep the keys.
+        if let Some(o) = focus.and_then(|i| self.overlays.get(i)) {
+            o.focus();
+        }
         linfo!(
-            "overlay up on {} monitor(s) in {} ms ({}x{} captured)",
+            "overlay up on {} monitor(s) in {} ms ({} captured)",
             self.overlays.len(),
             started.elapsed().as_millis(),
-            frame.width,
-            frame.height
+            shot.describe()
         );
     }
 
